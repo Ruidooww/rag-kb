@@ -3,7 +3,7 @@
 > 执行者：Codex
 > 完成日期：2026-06-03
 > 分支：feat/W1-D3-19-llamaindex-abstract
-> PR：#（PR 创建后回填）
+> PR：#3
 
 ## 1. 任务概述
 
