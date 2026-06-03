@@ -69,3 +69,6 @@ model_cache/
 # ===== 项目特定 =====
 historical_docs/
 *.local
+
+# ===== Claude Code 本地配置 =====
+.claude/
