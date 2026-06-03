@@ -1,9 +1,9 @@
-# Handoff: 任务 #18 - 搭建 FastAPI 项目骨架
+﻿# Handoff: 任务 #18 - 搭建 FastAPI 项目骨架
 
 > 执行者：Codex
 > 完成日期：2026-06-03
 > 分支：feat/W1-D3-18-fastapi-skeleton
-> PR：#（占位）
+> PR：#2
 
 ## 1. 任务概述
 
@@ -82,3 +82,4 @@ GREP_MODEL_EXIT=1
 
 - 上下文 1：后续模型调用必须从 `app.services.llm` 统一抽象层进入，不要在业务代码中直接 `import dashscope`、`from openai import OpenAI` 或 `import litellm`。
 - 上下文 2：`settings` 已暴露 LLM、Embedding、Rerank、Postgres、Qdrant、MinIO 以及 `config.yaml` 业务参数，可直接复用，避免新增 `os.getenv()`。
+
