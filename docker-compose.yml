@@ -15,7 +15,7 @@ services:
       - ./data/qdrant:/qdrant/storage
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:6333/healthz"]
+      test: ["CMD", "bash", "-c", "</dev/tcp/127.0.0.1/6333"]
       interval: 10s
       timeout: 5s
       retries: 3
