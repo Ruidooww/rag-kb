@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip install *)",
+      "Bash(python \"C:\\\\Users\\\\Ruidoww\\\\AppData\\\\Roaming\\\\Claude\\\\local-agent-mode-sessions\\\\skills-plugin\\\\9da5fb34-af51-4dcc-bc7a-2b27ba560fc4\\\\6d0d04ec-229b-43d4-91c1-1a03dd352e11\\\\skills\\\\docx\\\\scripts\\\\office\\\\unpack.py\" \"RAG知识库_云端测试阶段_任务书.docx\" unpacked/)"
+    ]
+  }
+}
