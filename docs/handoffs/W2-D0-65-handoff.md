@@ -98,7 +98,7 @@
 | uv pip check | ✅ | `All installed packages are compatible` |
 | 直接依赖 license | ✅ | `langgraph` / `langgraph-checkpoint-sqlite`: `License-Expression: MIT` |
 | 铁律 grep 精确扫描 | ✅ | `print` / logging exact / dashscope / Workflows / hardcoded provider / bare openai import / sensitive key 均无命中 |
-| GitHub CI | ✅ | 最新 self-review pass，run `26954924662` / job `79529483471` |
+| GitHub CI | ✅ | self-review 已在补交 Handoff 后通过；最终 run 以 PR checks 为准 |
 
 ### 关键命令输出
 
@@ -145,7 +145,7 @@ Success: no issues found in 19 source files
 ## 5. 已知问题 / 风险
 
 - 新增直接依赖 `langgraph` 和 `langgraph-checkpoint-sqlite`，license 均为 `MIT`；传递依赖包含 `langchain-core` / `langsmith` 等，但未安装完整 `langchain` 包。
-- PR #9 首次 CI run 失败于 A7 Handoff 检查，日志为 `未找到 task #65 的 handoff 文件`。补交 Handoff 后 run `26954924662` 已通过。
+- PR #9 首次 CI run 失败于 A7 Handoff 检查，日志为 `未找到 task #65 的 handoff 文件`。补交 Handoff 后 self-review 已通过，最终 run 以 PR checks 为准。
 - `backend/scripts/verify_langgraph.py` 的 `main()` 会真实调用 LLM；当前只验了 import 和 graph compile。没有真实 API Key 时直接运行脚本可能因外部调用失败，这是 spec §4.6 允许的。
 - 本机当前 `http://localhost:6333/healthz` 和 `http://localhost:8080/health` 返回 status `000`，因此没有运行完整 integration 测试。
 - 既有遗留仍存在：`backend/tests/api/test_health.py:20` 命中 D1（共享 app router），`backend/app/services/llm.py:97-99` 命中 A1（rerank retry 内新建 httpx.Client）；本任务未触碰这些文件。
@@ -186,7 +186,7 @@ Success: no issues found in 19 source files
 | A5 依赖安全扫描 | ✅ | `uv pip check` compatible；直接依赖 license `MIT` |
 | A6 commit message | ✅ | `chore: add LangGraph orchestration setup`，body 含 `Refs: #65` |
 | A7 Handoff 完整性 | ✅ | 本文件 §0-§8 齐全，含 `last_verified_commit` |
-| A8 CI 复现 | ✅ | 最新 run `26954924662` self-review pass |
+| A8 CI 复现 | ✅ | Handoff 补交后 self-review pass；最终 run 以 PR checks 为准 |
 
 ### Part B 软指标
 
@@ -281,7 +281,7 @@ ANTIPATTERNS 对照结果：
 ### 修复轨迹
 
 - 无代码 fix_attempt。
-- CI 调试记录：PR #9 首次 run `26954555975` 失败于 A7 Handoff 完整性检查，日志显示 `未找到 task #65 的 handoff 文件`；补交 Handoff 后 run `26954924662` 通过。
+- CI 调试记录：PR #9 首次 run `26954555975` 失败于 A7 Handoff 完整性检查，日志显示 `未找到 task #65 的 handoff 文件`；补交 Handoff 后 self-review 通过。
 
 ### 总评
 
