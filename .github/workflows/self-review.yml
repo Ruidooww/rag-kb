@@ -139,14 +139,14 @@ jobs:
           set +e
           FAIL=0
 
-          MATCH=$(grep -rE "sk-[A-Za-z0-9]{20,}" backend/ docs/ 2>/dev/null | grep -v ".env.example\|placeholder" || true)
+          MATCH=$(grep -rE --exclude-dir=.venv --exclude-dir=__pycache__ --exclude=coverage.xml "sk-[A-Za-z0-9]{20,}" backend/ docs/ 2>/dev/null | grep -v ".env.example\|placeholder" || true)
           if [ -n "$MATCH" ]; then
             echo "❌ 可能的真实 API Key 命中:"
             echo "$MATCH"
             FAIL=1
           fi
 
-          MATCH=$(grep -rE "\b1[3-9][0-9]{9}\b" backend/app/ docs/ 2>/dev/null || true)
+          MATCH=$(grep -rE --exclude-dir=.venv --exclude-dir=__pycache__ --exclude=coverage.xml "\b1[3-9][0-9]{9}\b" backend/app/ docs/ 2>/dev/null || true)
           if [ -n "$MATCH" ]; then
             echo "⚠️ 可能的手机号:"
             echo "$MATCH"
