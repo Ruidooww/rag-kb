@@ -54,7 +54,7 @@ codegraph status # 看索引状态
 
 ---
 
-## 🔒 七条迁移友好铁律（最高优先级）
+## 🔒 八条迁移友好铁律（最高优先级）
 
 **违反任何一条 = 重做该任务。**
 
@@ -92,6 +92,17 @@ codegraph status # 看索引状态
 ### 铁律 #7：保留 Ollama 兼容性
 - 切换到本地 Ollama 只改 `.env`，业务代码必须零改动
 - 每周五运行迁移验证（任务 #52）
+
+### 铁律 #8：Agent 编排走 LangGraph，RAG 工具走 LlamaIndex
+
+- ✅ 允许：`from langgraph.graph import StateGraph`
+- ✅ 允许：LangGraph 节点调 `from app.services.llm import get_llm`
+- ❌ 禁止：业务代码用 LlamaIndex Workflows（除非有强理由且 spec 明示）
+- ❌ 禁止：在 LangGraph 节点里直接 import `openai` / `dashscope`
+- 分层原则：
+  - **RAG 工具层**：LlamaIndex（embedding / LLM / rerank / chunking）
+  - **Agent 编排层**：LangGraph（状态图 / 节点 / 条件边 / 工具调用）
+  - **桥接**：LangGraph 节点是 Python 函数，可调任何 LlamaIndex 工具
 
 ---
 

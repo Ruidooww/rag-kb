@@ -17,6 +17,7 @@
 | D1 | 测试 | 测试相互污染（共享 app router）| 中 |
 | E1 | 性能 | 工厂函数加 @lru_cache 缓存 client | 高 |
 | F1 | Spec | 依赖列表与实现描述不一致 | 中 |
+| G | LangGraph | 占位，待积累 | - |
 
 ---
 
@@ -245,6 +246,12 @@ grep -n "uv add\\|dependencies" docs/tasks/*.md
 
 ---
 
+## G. LangGraph
+
+（暂无反模式 - 待积累。常见候选：State 设计混乱、节点内调用副作用、checkpoint 缺失等。）
+
+---
+
 ## 如何追加新反模式
 
 每次审查（或自审查 Part E3）发现新反模式时：
@@ -287,4 +294,4 @@ grep -n "uv add\\|dependencies" docs/tasks/*.md
 
 ---
 
-_v1.1 | 反模式 6 条 | 最后更新：2026-06-04_
+_v1.2 | 反模式 6 条 + G 类占位 | 最后更新：2026-06-04_
