@@ -16,6 +16,7 @@
 | C1 | 配置 | os.getenv 散落各处 | 高 |
 | D1 | 测试 | 测试相互污染（共享 app router）| 中 |
 | E1 | 性能 | 工厂函数加 @lru_cache 缓存 client | 高 |
+| F1 | Spec | 依赖列表与实现描述不一致 | 中 |
 
 ---
 
@@ -211,6 +212,39 @@ grep -rB1 "def get_(llm|embedding|reranker|client)" backend/app/services/ | grep
 
 ---
 
+## F. Spec 与依赖
+
+### F1. 依赖列表与实现描述不一致
+
+**来源**：任务 #20 自审
+**严重度**：🟡 中
+
+**问题**：Spec 的依赖清单要求安装某个高级抽象库，但实现章节实际要求直接使用底层 SDK。这样会引入不必要依赖，甚至触发 Python 版本兼容问题。
+
+**❌ 错误范例**：
+
+```text
+§4.3 用 qdrant-client SDK 实现 store
+§4.11 同时要求安装 llama-index-vector-stores-qdrant
+```
+
+**✅ 正确范例**：
+
+```text
+如果实现只调用 qdrant-client.upsert/query_points，
+依赖清单只保留 qdrant-client。
+```
+
+**Codex 自检方法**：
+
+```bash
+grep -n "uv add\\|dependencies" docs/tasks/*.md
+```
+
+发现依赖清单和实现章节不一致时，先停下向审查者确认，不要自行安装多余依赖。
+
+---
+
 ## 如何追加新反模式
 
 每次审查（或自审查 Part E3）发现新反模式时：
@@ -253,4 +287,4 @@ grep -rB1 "def get_(llm|embedding|reranker|client)" backend/app/services/ | grep
 
 ---
 
-_v1.0 | 初始反模式 5 条 | 最后更新：2026-06-03_
+_v1.1 | 反模式 6 条 | 最后更新：2026-06-04_
