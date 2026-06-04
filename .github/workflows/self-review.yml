@@ -162,7 +162,7 @@ jobs:
         run: |
           set +e
           FAIL=0
-          for HASH in $(git log origin/main..HEAD --format=%H); do
+          for HASH in $(git log --no-merges origin/main..HEAD --format=%H); do
             SUBJECT=$(git log -1 --format=%s $HASH)
             BODY=$(git log -1 --format=%B $HASH)
 
