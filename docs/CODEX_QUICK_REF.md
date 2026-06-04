@@ -6,7 +6,7 @@
 
 ---
 
-## 🔒 七条迁移友好铁律（必查，违反即重做）
+## 🔒 八条迁移友好铁律（必查，违反即重做）
 
 | # | 铁律 | ❌ 禁止 | ✅ 允许 |
 |---|------|--------|--------|
@@ -17,6 +17,7 @@
 | 5 | Prompt 放 prompts/ 目录 | inline > 3 行 | prompts/*.txt |
 | 6 | 关键参数走 config.yaml | 硬编码 chunk_size=800 | settings.chunk_size |
 | 7 | 保留 Ollama 兼容性 | 改业务代码切模型 | 只改 .env |
+| 8 | Agent 编排走 LangGraph | LlamaIndex Workflows 写 Agent | `StateGraph` + 节点函数 |
 
 **违反任一 = 重做**。详情：`CLAUDE.md §铁律` 或 `SELF_REVIEW.md Part A3`。
 
@@ -33,7 +34,21 @@
 | 改它会影响什么 | `codegraph_impact "name"` |
 | 拿一个符号完整源码 | `codegraph_node "name" includeCode=true` |
 
-**仍用 grep 的场景**：.env / docs/ 文本 / 七条铁律 Part A3 grep。
+**仍用 grep 的场景**：.env / docs/ 文本 / 铁律 Part A3 grep。
+
+---
+
+## 🧠 Agent 编排（LangGraph）
+
+| 模式 | 用法 |
+|------|------|
+| 简单 pipeline（BaseQA）| `StateGraph` + 线性节点 |
+| 条件分发（Router）| `add_conditional_edges` |
+| 并发抽取（ServicePath）| `Send` API fan-out / fan-in |
+| 工具调用（FreeQA）| `create_react_agent(llm, tools)` |
+| 状态持久化 | `langgraph-checkpoint-sqlite` |
+
+详情：[STACK_UPDATE_V2.2.md](./STACK_UPDATE_V2.2.md)
 
 ---
 
