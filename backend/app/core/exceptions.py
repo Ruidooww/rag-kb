@@ -21,6 +21,11 @@ class LLMServiceError(AppException):
     status_code = 502
 
 
+class VectorStoreError(AppException):
+    error_code = "VECTOR_STORE_ERROR"
+    status_code = 502
+
+
 class NotFoundError(AppException):
     error_code = "NOT_FOUND"
     status_code = 404

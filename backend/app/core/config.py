@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     embed_model: str
     postgres_url: str
     qdrant_url: str
+    qdrant_collection: str = "rag_chunks"
     minio_endpoint: str
     minio_access_key: SecretStr
     minio_secret_key: SecretStr
