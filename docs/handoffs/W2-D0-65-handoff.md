@@ -33,7 +33,7 @@
 
 ### 风险评估
 
-低到中。本任务没有实现任何实际 Agent，也没有改 `backend/app/services/llm.py` 等核心业务逻辑；主要风险是新增 LangGraph 依赖及其传递依赖体量，需要审查者确认技术栈方向符合预期。PR #9 首次 CI 失败根因是 Step 8 前尚未提交 Handoff，非代码失败；本文件提交后应触发重跑。
+低到中。本任务没有实现任何实际 Agent，也没有改 `backend/app/services/llm.py` 等核心业务逻辑；主要风险是新增 LangGraph 依赖及其传递依赖体量，需要审查者确认技术栈方向符合预期。PR #9 首次 CI 失败根因是 Step 8 前尚未提交 Handoff，非代码失败；补交 Handoff 后最新 CI 已通过。
 
 ---
 
@@ -98,7 +98,7 @@
 | uv pip check | ✅ | `All installed packages are compatible` |
 | 直接依赖 license | ✅ | `langgraph` / `langgraph-checkpoint-sqlite`: `License-Expression: MIT` |
 | 铁律 grep 精确扫描 | ✅ | `print` / logging exact / dashscope / Workflows / hardcoded provider / bare openai import / sensitive key 均无命中 |
-| GitHub CI | ⚠️ | 首次 run 失败于 A7：Handoff 尚未提交；本提交补齐后需看重跑结果 |
+| GitHub CI | ✅ | 最新 self-review pass，run `26954924662` / job `79529483471` |
 
 ### 关键命令输出
 
@@ -145,7 +145,7 @@ Success: no issues found in 19 source files
 ## 5. 已知问题 / 风险
 
 - 新增直接依赖 `langgraph` 和 `langgraph-checkpoint-sqlite`，license 均为 `MIT`；传递依赖包含 `langchain-core` / `langsmith` 等，但未安装完整 `langchain` 包。
-- PR #9 首次 CI run 失败于 A7 Handoff 检查，日志为 `未找到 task #65 的 handoff 文件`。这是 10 步流程中 Step 8/9 之前的预期失败，本文件提交后应解决。
+- PR #9 首次 CI run 失败于 A7 Handoff 检查，日志为 `未找到 task #65 的 handoff 文件`。补交 Handoff 后 run `26954924662` 已通过。
 - `backend/scripts/verify_langgraph.py` 的 `main()` 会真实调用 LLM；当前只验了 import 和 graph compile。没有真实 API Key 时直接运行脚本可能因外部调用失败，这是 spec §4.6 允许的。
 - 本机当前 `http://localhost:6333/healthz` 和 `http://localhost:8080/health` 返回 status `000`，因此没有运行完整 integration 测试。
 - 既有遗留仍存在：`backend/tests/api/test_health.py:20` 命中 D1（共享 app router），`backend/app/services/llm.py:97-99` 命中 A1（rerank retry 内新建 httpx.Client）；本任务未触碰这些文件。
@@ -186,7 +186,7 @@ Success: no issues found in 19 source files
 | A5 依赖安全扫描 | ✅ | `uv pip check` compatible；直接依赖 license `MIT` |
 | A6 commit message | ✅ | `chore: add LangGraph orchestration setup`，body 含 `Refs: #65` |
 | A7 Handoff 完整性 | ✅ | 本文件 §0-§8 齐全，含 `last_verified_commit` |
-| A8 CI 复现 | ⚠️ | 首次 CI failed: missing Handoff；本提交补齐后需看 PR #9 最新 run |
+| A8 CI 复现 | ✅ | 最新 run `26954924662` self-review pass |
 
 ### Part B 软指标
 
@@ -257,7 +257,7 @@ ANTIPATTERNS 对照结果：
 - D5 新增依赖：`langgraph` / `langgraph-checkpoint-sqlite`，license 均为 MIT → ✅ 通过例外条件。
 - D6 核心抽象改动：否，未改 `backend/app/core/*` 或 `backend/app/services/llm.py`。
 - D7 公共 API 删改：否。
-- D8 Part A 失败：否；A8 首次失败为 Handoff 缺失，Step 9 后重跑。
+- D8 Part A 失败：否；A8 首次失败为 Handoff 缺失，补交 Handoff 后已重跑通过。
 - D9 Part C 失败：否；仅记录历史遗留。
 - D10 覆盖率下降：否，保持 74%。
 - D11 偏差数：3，不超过阈值。
@@ -281,7 +281,7 @@ ANTIPATTERNS 对照结果：
 ### 修复轨迹
 
 - 无代码 fix_attempt。
-- CI 调试记录：PR #9 首次 run `26954555975` 失败于 A7 Handoff 完整性检查，日志显示 `未找到 task #65 的 handoff 文件`；本文件为对应修复。
+- CI 调试记录：PR #9 首次 run `26954555975` 失败于 A7 Handoff 完整性检查，日志显示 `未找到 task #65 的 handoff 文件`；补交 Handoff 后 run `26954924662` 通过。
 
 ### 总评
 
