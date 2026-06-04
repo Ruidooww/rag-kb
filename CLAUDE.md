@@ -19,15 +19,13 @@
 
 ## 🔒 自审查机制 v2.1（每个代码任务强制读）
 
-每个代码任务在执行前**必须读完以下文档**（顺序也别错）：
+⚡ **平时只读浓缩卡，按需回查源文档**：
 
-1. **`docs/TASK_PROMPT_TEMPLATE.md`** — 任务执行的 10 步标准流程
-2. **`docs/SELF_REVIEW.md`** — Part A-E 自审查规程（PR 创建后必跑）
-3. **`docs/ANTIPATTERNS.md`** — 反模式知识库，逐条对照
-4. **`docs/HANDOFF_TEMPLATE.md`** — Handoff §0-§8 模板
-5. **`docs/REVIEW_FEEDBACK_TEMPLATE.md`** — 收到审查反馈时按此格式回应
-6. **对应任务 spec**：`docs/tasks/W?-D?-N-xxx.md`
-7. **上一轮 Handoff**：`docs/handoffs/W?-D?-M-handoff.md`
+1. **`docs/CODEX_QUICK_REF.md`** ← 速查卡（七条铁律 / 10 步流程 / Part A-E / 反模式 / 命令）
+2. **对应任务 spec**：`docs/tasks/W?-D?-N-xxx.md`
+3. **上一轮 Handoff**：`docs/handoffs/W?-D?-M-handoff.md`
+
+QUICK_REF 解决不了的细节再打开 `SELF_REVIEW.md` / `ANTIPATTERNS.md` / `TASK_PROMPT_TEMPLATE.md` / `HANDOFF_TEMPLATE.md` / `REVIEW_FEEDBACK_TEMPLATE.md`。
 
 **任何代码任务不完整走自审查 = 任务未完成**。
 

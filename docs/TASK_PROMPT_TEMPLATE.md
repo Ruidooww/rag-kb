@@ -32,11 +32,12 @@ C:\Users\Ruidoww\Desktop\RAG
 
 ## 必读文档（按顺序）
 1. CLAUDE.md（项目级规则）
-2. docs/SELF_REVIEW.md（自审查规程）
-3. docs/ANTIPATTERNS.md（反模式知识库）
-4. docs/tasks/W?-D?-N-xxx.md（本任务详细 spec）
-5. docs/handoffs/[上一轮 handoff].md（上一轮上下文）
-6. [其他相关文件，如 settings、依赖文件]
+2. docs/CODEX_QUICK_REF.md（速查卡——七条铁律 / 10 步 / Part A-E / 反模式 / 命令）
+3. docs/tasks/W?-D?-N-xxx.md（本任务详细 spec）
+4. docs/handoffs/[上一轮 handoff].md（上一轮上下文）
+5. [其他相关文件，如 settings、依赖文件]
+
+需要细节时再按需打开：SELF_REVIEW.md / ANTIPATTERNS.md / HANDOFF_TEMPLATE.md / REVIEW_FEEDBACK_TEMPLATE.md
 
 ## 分支名（本轮强制使用）
 feat/W?-D?-N-[kebab-case-描述]
