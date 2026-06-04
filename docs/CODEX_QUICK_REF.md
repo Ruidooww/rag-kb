@@ -1,0 +1,152 @@
+# Codex 速查卡 v1.0
+
+> **每个代码任务前只需读本卡 + 任务 spec + 上一轮 Handoff**。
+> 需要细节时再打开"何时打开完整文档"中列出的源文档。
+> 节省 ~18K tokens/任务（vs 读完整规程文档）。
+
+---
+
+## 🔒 七条迁移友好铁律（必查，违反即重做）
+
+| # | 铁律 | ❌ 禁止 | ✅ 允许 |
+|---|------|--------|--------|
+| 1 | 模型调用走 app.services.llm | `import dashscope` / `from openai import OpenAI` | `from app.services.llm import get_llm` |
+| 2 | 配置走环境变量 | `MODEL = "qwen3.5-omni-flash"` | `settings.llm_model` |
+| 3 | OpenAI-Compatible 协议 | 用 dashscope 原生 SDK | OpenAILike / OpenAIEmbedding |
+| 4 | Embedding 用 bge-m3（本地）| 换 text-embedding-v4 | bge-m3 维度 1024 |
+| 5 | Prompt 放 prompts/ 目录 | inline > 3 行 | prompts/*.txt |
+| 6 | 关键参数走 config.yaml | 硬编码 chunk_size=800 | settings.chunk_size |
+| 7 | 保留 Ollama 兼容性 | 改业务代码切模型 | 只改 .env |
+
+**违反任一 = 重做**。详情：`CLAUDE.md §铁律` 或 `SELF_REVIEW.md Part A3`。
+
+---
+
+## 🔍 CodeGraph 用法（优先于 grep）
+
+| 场景 | 工具 |
+|------|------|
+| 找符号定义 | `codegraph_search "name"` |
+| 理解架构/某区域 | `codegraph_explore "question or symbols"` |
+| 谁调用了它 | `codegraph_callers "name"` |
+| 它调用了谁 | `codegraph_callees "name"` |
+| 改它会影响什么 | `codegraph_impact "name"` |
+| 拿一个符号完整源码 | `codegraph_node "name" includeCode=true` |
+
+**仍用 grep 的场景**：.env / docs/ 文本 / 七条铁律 Part A3 grep。
+
+---
+
+## 📋 任务执行 10 步（标准流程）
+
+```
+1. git checkout main && git pull → git checkout -b feat/W?-D?-N-xxx
+2. 阅读 spec + 上一轮 Handoff → 5 句话复述 → 等用户 confirm
+3. 实现代码
+4. 本地验收（SELF_REVIEW Part A 第一轮）
+5. git commit + push
+6. gh pr create
+7. 跑完整 SELF_REVIEW Part A-E
+8. 写 Handoff §0-§8
+9. git commit Handoff + push（自动更新 PR）
+10. 返回结果给用户
+```
+
+任何一步遇阻 / Part D 硬触发 → 停下问用户，**绝不自动决策**。
+详情：`TASK_PROMPT_TEMPLATE.md`。
+
+---
+
+## ✅ Self-Review Part A-E（PR 创建后必跑）
+
+| Part | 内容 | 失败处理 |
+|------|------|---------|
+| **A 硬指标** | 8 项：pytest / coverage / ruff / mypy / 铁律 grep / spec 文件 / 依赖 / commit / Handoff | 必须全 ✅，fix 后重跑（≤ 3 轮）|
+| **B 软指标** | 8 题：每题贴 file:line + 代码片段（错误处理/偏差/安全/性能/可测/配置/并发/暗坑）| 不能纯文字答 |
+| **C 陷阱** | 18 项 yes/no + ANTIPATTERNS.md 对照 | 任一 no → 修复或人工 |
+| **D 人工触发** | 11 条（代码量 >1000 hard / 改核心 / 删 API / 新依赖 / 偏差>3 等）| 任一命中 → 停下问用户 |
+| **E 自反思** | 3 条改进 + 1 条忠告 + 0+ 新反模式 | 强制写，防自满 |
+
+详情：`SELF_REVIEW.md`。
+
+---
+
+## 📦 Handoff §0-§8（写入 docs/handoffs/W?-D?-N-handoff.md）
+
+```
+§0 TL;DR（30 秒速读）：总评 + 关键数据 + 风险 + 亮点 + 看点
+§1 任务概述（2-3 句）
+§2 完成清单（对应 spec §4）
+§3 偏差（每条带 commit hash + 影响）
+§4 验收结果（真实命令输出，不能编造）
+§5 已知问题/风险 + 新增依赖说明
+§6 给审查者的提示（≥ 3 条带 file:line）
+§7 给下一轮的提示（≥ 2 条）
+§8 自审报告 + last_verified_commit
+```
+
+**§0 TL;DR 是审查者入口**，必须 30 秒能读完。详情：`HANDOFF_TEMPLATE.md`。
+
+---
+
+## 🚫 ANTIPATTERNS 速查（每次对照，详情查 ANTIPATTERNS.md）
+
+| ID | 标题 | 严重度 |
+|----|------|--------|
+| A1 | httpx.Client 循环新建 | 🟡 中 |
+| B1 | raise X 不加 from e | 🟡 中 |
+| C1 | os.getenv 散落各处 | 🔴 高 |
+| D1 | 测试共享 app router | 🟡 中 |
+| E1 | 工厂函数加 @lru_cache | 🔴 高 |
+| F1 | spec 依赖列表与实现描述不一致 | 🟡 中 |
+
+新发现的反模式必须在 Handoff §8 E3 追加到 ANTIPATTERNS.md。
+
+---
+
+## 🛠 常用命令
+
+```bash
+# 后端（在 backend/ 目录下）：
+uv sync                                              # 装依赖
+uv run pytest -v -m "not integration"                # 跑非 integration 测试
+uv run pytest -v --cov=app                           # 跑全部 + 覆盖率
+uv run ruff check . && uv run ruff format --check .  # 格式 / lint
+uv run mypy app                                      # 类型检查
+uv run uvicorn app.main:app --reload                 # 起服务
+uv add <package>                                     # 加依赖
+
+# Self-review 铁律 grep（在仓库根）：
+grep -rE "import dashscope" backend/app/
+grep -rE "print\(" backend/app/
+grep -rE "^import logging$|^from logging import" backend/app/
+grep -rE "from openai|^import openai" backend/app/ | grep -v "services/llm.py"
+grep -rE "https://dashscope|qwen[0-9]|gte-rerank" backend/app/
+```
+
+---
+
+## 🌿 Git 规范
+
+```
+分支命名：feat/W?-D?-N-xxx | fix/... | docs/... | chore/...
+Commit：<type>: <subject>\n\nRefs: #N
+Squash merge + 删 feature 分支
+```
+
+---
+
+## 🆘 何时打开完整文档（fallback 指引）
+
+| 情况 | 打开 |
+|------|------|
+| 不确定 Self-Review 某 Part 怎么填 | `docs/SELF_REVIEW.md` |
+| 不确定某反模式细节 | `docs/ANTIPATTERNS.md` |
+| 不确定 Handoff §N 怎么写 | `docs/HANDOFF_TEMPLATE.md` |
+| 不确定 10 步某步具体做什么 | `docs/TASK_PROMPT_TEMPLATE.md` |
+| 不确定铁律边界 | `CLAUDE.md` |
+| 其他场景 | **本卡片够用** |
+
+---
+
+_v1.0 | 与 `SELF_REVIEW.md v2.1` 等配套 | 最后更新：2026-06-04_
