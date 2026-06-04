@@ -1,0 +1,225 @@
+# Codex 自审查 CI - 在 PR 上自动复现 Part A 硬指标
+# 触发：每个 PR 的 push / 重新打开
+# 失败处理：阻止合并，Codex 必须修复后重推
+
+name: Self-Review (Part A 硬指标)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/self-review.yml'
+
+jobs:
+  self-review:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: rag
+          POSTGRES_PASSWORD: ragpass
+          POSTGRES_DB: rag
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U rag"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: 'latest'
+
+      - name: A1.1 - uv sync
+        run: uv sync
+
+      - name: A1.2 - pytest with coverage
+        env:
+          LLM_PROVIDER: bailian
+          LLM_BASE_URL: https://placeholder.example/v1
+          LLM_MODEL: placeholder-model
+          LLM_API_KEY: sk-placeholder
+          RERANK_BASE_URL: https://placeholder.example/api/v1
+          RERANK_MODEL: placeholder-rerank
+          EMBED_BASE_URL: http://localhost:8080
+          EMBED_MODEL: BAAI/bge-m3
+          POSTGRES_URL: postgresql+asyncpg://rag:ragpass@localhost:5432/rag
+          QDRANT_URL: http://localhost:6333
+          MINIO_ENDPOINT: localhost:9000
+          MINIO_ACCESS_KEY: minioadmin
+          MINIO_SECRET_KEY: minioadmin
+          MINIO_BUCKET: rag-documents
+        run: |
+          uv run pytest -v -m "not integration" --cov=app --cov-report=term-missing --cov-report=xml
+        continue-on-error: false
+
+      - name: A1.3 - 覆盖率门槛检查
+        run: |
+          uv run python -c "
+          import xml.etree.ElementTree as ET
+          tree = ET.parse('coverage.xml')
+          rate = float(tree.getroot().get('line-rate', 0))
+          print(f'Overall coverage: {rate:.1%}')
+          assert rate >= 0.60, f'Coverage {rate:.1%} below 60% threshold (CI skips integration tests)'
+          "
+
+      - name: A2.1 - ruff check
+        run: uv run ruff check .
+
+      - name: A2.2 - ruff format check
+        run: uv run ruff format --check .
+
+      - name: A2.3 - mypy strict
+        run: uv run mypy app
+
+      - name: A3.1 - 七条铁律 grep（禁止命中）
+        working-directory: ${{ github.workspace }}
+        run: |
+          set +e
+          FAIL=0
+
+          echo "=== 检查 import dashscope ==="
+          if grep -rE "import dashscope" backend/app/; then
+            echo "❌ 命中 import dashscope"
+            FAIL=1
+          fi
+
+          echo "=== 检查 print( ==="
+          if grep -rE "print\(" backend/app/; then
+            echo "❌ 命中 print("
+            FAIL=1
+          fi
+
+          echo "=== 检查 stdlib logging import ==="
+          if grep -rE "^import logging$|^from logging import" backend/app/; then
+            echo "❌ 命中 stdlib logging"
+            FAIL=1
+          fi
+
+          echo "=== 检查 openai 直接 import（仅 llm.py 允许）==="
+          MATCH=$(grep -rE "from openai|^import openai" backend/app/ | grep -v "services/llm.py" || true)
+          if [ -n "$MATCH" ]; then
+            echo "❌ 命中（仅 llm.py 允许）:"
+            echo "$MATCH"
+            FAIL=1
+          fi
+
+          echo "=== 检查硬编码 URL/模型名 ==="
+          MATCH=$(grep -rE "https://dashscope|qwen[0-9]|gte-rerank|text-embedding" backend/app/ || true)
+          if [ -n "$MATCH" ]; then
+            echo "❌ 硬编码命中:"
+            echo "$MATCH"
+            FAIL=1
+          fi
+
+          exit $FAIL
+
+      - name: A3.2 - 敏感数据扫描
+        working-directory: ${{ github.workspace }}
+        run: |
+          set +e
+          FAIL=0
+
+          MATCH=$(grep -rE --exclude-dir=.venv --exclude-dir=__pycache__ --exclude=coverage.xml "sk-[A-Za-z0-9]{20,}" backend/ docs/ 2>/dev/null | grep -v ".env.example\|placeholder" || true)
+          if [ -n "$MATCH" ]; then
+            echo "❌ 可能的真实 API Key 命中:"
+            echo "$MATCH"
+            FAIL=1
+          fi
+
+          MATCH=$(grep -rE --exclude-dir=.venv --exclude-dir=__pycache__ --exclude=coverage.xml "\b1[3-9][0-9]{9}\b" backend/app/ docs/ 2>/dev/null || true)
+          if [ -n "$MATCH" ]; then
+            echo "⚠️ 可能的手机号:"
+            echo "$MATCH"
+          fi
+
+          exit $FAIL
+
+      - name: A5 - 依赖兼容性检查
+        run: uv pip check
+
+      - name: A6 - commit message 规范
+        working-directory: ${{ github.workspace }}
+        run: |
+          set +e
+          FAIL=0
+          for HASH in $(git log --no-merges origin/main..HEAD --format=%H); do
+            SUBJECT=$(git log -1 --format=%s $HASH)
+            BODY=$(git log -1 --format=%B $HASH)
+
+            if ! echo "$SUBJECT" | grep -qE "^(feat|fix|refactor|test|docs|chore)(\(.+\))?: .+"; then
+              echo "❌ commit $HASH subject 不规范: $SUBJECT"
+              FAIL=1
+            fi
+
+            if ! echo "$BODY" | grep -qE "Refs:\s*#[0-9]+"; then
+              echo "⚠️ commit $HASH 缺少 Refs: #N"
+            fi
+          done
+          exit $FAIL
+
+      - name: A7 - Handoff 完整性检查
+        working-directory: ${{ github.workspace }}
+        run: |
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          TASK_ID=$(echo "$PR_TITLE" | grep -oE "#[0-9]+" | head -1 | tr -d '#')
+
+          if [ -z "$TASK_ID" ]; then
+            echo "⚠️ 无法从 PR 标题提取 task ID，跳过 Handoff 检查"
+            exit 0
+          fi
+
+          HANDOFF=$(find docs/handoffs -name "*-${TASK_ID}-handoff.md" 2>/dev/null | head -1)
+
+          if [ -z "$HANDOFF" ]; then
+            echo "❌ 未找到 task #${TASK_ID} 的 handoff 文件"
+            exit 1
+          fi
+
+          echo "检查 $HANDOFF"
+
+          REQUIRED_SECTIONS=("## 0. TL;DR" "## 1. " "## 2. " "## 3. " "## 4. " "## 5. " "## 6. " "## 7. " "## 8. ")
+          FAIL=0
+          for SECTION in "${REQUIRED_SECTIONS[@]}"; do
+            if ! grep -q "$SECTION" "$HANDOFF"; then
+              echo "❌ Handoff 缺少章节: $SECTION"
+              FAIL=1
+            fi
+          done
+
+          if ! grep -q "last_verified_commit" "$HANDOFF"; then
+            echo "❌ Handoff §8 缺少 last_verified_commit"
+            FAIL=1
+          fi
+
+          exit $FAIL
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Self-Review CI 结果"
+          echo "- 仓库：${{ github.repository }}"
+          echo "- PR：#${{ github.event.pull_request.number }}"
+          echo "- 分支：${{ github.head_ref }}"
+          echo "- Commit：${{ github.event.pull_request.head.sha }}"
+          echo ""
+          echo "详细结果见上方各 step。失败需修复后重推。"

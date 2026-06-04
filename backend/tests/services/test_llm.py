@@ -67,13 +67,18 @@ def local_rerank_server_url() -> Iterator[str]:
         thread.join(timeout=5)
 
 
-def test_settings_loads_from_env(tmp_path: Path) -> None:
+def test_settings_loads_from_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.llm_model
     assert settings.llm_base_url
     assert settings.embed_model
     assert settings.embed_base_url
     assert settings.rerank_model
     assert settings.rerank_base_url
+
+    # CI injects these through workflow env:, and pydantic-settings reads
+    # os.environ before the partial .env used below.
+    for key in ("LLM_PROVIDER", "LLM_API_KEY"):
+        monkeypatch.delenv(key, raising=False)
 
     env_file = tmp_path / ".env"
     env_file.write_text(
@@ -119,6 +124,7 @@ def test_get_llm_completion() -> None:
     assert len(response.text) > 10
 
 
+@pytest.mark.integration
 def test_get_embedding_dimension() -> None:
     embedder = get_embedding()
 
@@ -130,6 +136,7 @@ def test_get_embedding_dimension() -> None:
     assert all(isinstance(value, float) for value in vector)
 
 
+@pytest.mark.integration
 def test_get_embedding_batch() -> None:
     vectors = get_embedding().get_text_embedding_batch(["a", "b", "c"])
 
