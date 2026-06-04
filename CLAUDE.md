@@ -17,6 +17,45 @@
 
 ---
 
+## 🔒 自审查机制 v2.1（每个代码任务强制读）
+
+每个代码任务在执行前**必须读完以下文档**（顺序也别错）：
+
+1. **`docs/TASK_PROMPT_TEMPLATE.md`** — 任务执行的 10 步标准流程
+2. **`docs/SELF_REVIEW.md`** — Part A-E 自审查规程（PR 创建后必跑）
+3. **`docs/ANTIPATTERNS.md`** — 反模式知识库，逐条对照
+4. **`docs/HANDOFF_TEMPLATE.md`** — Handoff §0-§8 模板
+5. **`docs/REVIEW_FEEDBACK_TEMPLATE.md`** — 收到审查反馈时按此格式回应
+6. **对应任务 spec**：`docs/tasks/W?-D?-N-xxx.md`
+7. **上一轮 Handoff**：`docs/handoffs/W?-D?-M-handoff.md`
+
+**任何代码任务不完整走自审查 = 任务未完成**。
+
+---
+
+## 🔍 CodeGraph 集成（优先于 grep）
+
+本项目已集成 [CodeGraph](https://github.com/) 作为代码索引工具，通过 MCP 服务对 Codex / Claude Code 透明。
+
+### 优先级
+- 查找符号：用 `codegraph_search` / `codegraph_explore` > `grep`
+- 查调用关系：用 `codegraph_callers` / `codegraph_callees` > 人工追踪
+- 评估改动影响：用 `codegraph_impact`
+- 测试范围：用 `codegraph_affected`
+
+### 何时仍用 grep
+- CodeGraph 索引未覆盖的文件（如 `.env`、`docs/`、`docker-compose.yml`）
+- 自审查 Part A3 的铁律 grep（必须用文本扫描的场景）
+
+### 索引同步
+代码改动后，本地建议跑：
+```bash
+codegraph sync   # 增量同步
+codegraph status # 看索引状态
+```
+
+---
+
 ## 🔒 七条迁移友好铁律（最高优先级）
 
 **违反任何一条 = 重做该任务。**
