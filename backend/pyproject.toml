@@ -48,5 +48,5 @@ ignore_missing_imports = true
 asyncio_mode = "auto"
 testpaths = ["tests"]
 markers = [
-    "integration: tests that call external model services",
+    "integration: tests requiring real external services (LLM/Rerank/Embedding)",
 ]
