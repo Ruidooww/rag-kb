@@ -1,0 +1,35 @@
+- id: cust-001
+  name: Example Tech
+  industry: software
+  size: medium
+  region: east
+  metadata:
+    tier: A
+- id: cust-002
+  name: Demo Group
+  industry: manufacturing
+  size: enterprise
+  region: north
+  metadata:
+    tier: A
+- id: cust-003
+  name: Sample Retail
+  industry: retail
+  size: small
+  region: south
+  metadata:
+    tier: B
+- id: cust-004
+  name: Pilot Energy
+  industry: energy
+  size: large
+  region: west
+  metadata:
+    tier: B
+- id: cust-005
+  name: Reference Finance
+  industry: finance
+  size: enterprise
+  region: east
+  metadata:
+    tier: A

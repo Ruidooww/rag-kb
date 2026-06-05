@@ -1,0 +1,14 @@
+- id: service-001
+  customer_id: cust-001
+  type: visit
+  created_at: 2026-06-01T09:00:00
+  summary: Completed launch review.
+  metadata:
+    owner: support
+- id: service-002
+  customer_id: cust-002
+  type: ticket
+  created_at: 2026-06-02T10:30:00
+  summary: Answered integration question.
+  metadata:
+    owner: support

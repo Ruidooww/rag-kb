@@ -1,0 +1,18 @@
+- id: contract-001
+  customer_id: cust-001
+  start_date: 2026-01-01
+  end_date: 2026-12-31
+  amount: 120000
+  currency: CNY
+  status: active
+  metadata:
+    product: RAG-KB
+- id: contract-002
+  customer_id: cust-002
+  start_date: 2026-03-01
+  end_date: 2027-02-28
+  amount: 260000
+  currency: CNY
+  status: active
+  metadata:
+    product: Knowledge Suite

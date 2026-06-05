@@ -1,0 +1,14 @@
+- id: contact-001
+  customer_id: cust-001
+  name: Alice Demo
+  role: IT Manager
+  phone: "13800000000"
+  email: alice@example.test
+  metadata: {}
+- id: contact-002
+  customer_id: cust-002
+  name: Bob Demo
+  role: Operations
+  phone: "13900000000"
+  email: bob@example.test
+  metadata: {}

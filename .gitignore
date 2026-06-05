@@ -38,8 +38,9 @@ yarn-error.log*
 pnpm-debug.log*
 
 # ===== Docker / 数据 =====
-data/
-!data/.gitkeep
+data/*
+!data/mock_crm/
+!data/mock_crm/*.yaml
 docker-compose.override.yml
 
 # ===== IDE =====
