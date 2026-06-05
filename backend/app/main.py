@@ -10,12 +10,16 @@ from app.api.router import api_router
 from app.core.config import settings
 from app.core.exceptions import AppException
 from app.core.logging import setup_logging
+from app.services.storage import S3CompatibleStorage
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     setup_logging(settings.app_log_level)
     logger.info(f"Starting RAG-KB backend in {settings.app_env} mode")
+    storage = S3CompatibleStorage()
+    await storage.ensure_ready()
+    _app.state.storage = storage
     yield
     logger.info("Shutting down RAG-KB backend")
 

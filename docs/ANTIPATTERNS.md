@@ -17,6 +17,8 @@
 | D1 | 测试 | 测试相互污染（共享 app router）| 中 |
 | E1 | 性能 | 工厂函数加 @lru_cache 缓存 client | 高 |
 | F1 | Spec | 依赖列表与实现描述不一致 | 中 |
+| G1 | S3-compatible | Env vars are product-specific | 高 |
+| G2 | S3-compatible | Private health endpoints are product-specific | 中 |
 | G | LangGraph | 占位，待积累 | - |
 
 ---
@@ -249,6 +251,83 @@ grep -n "uv add\\|dependencies" docs/tasks/*.md
 ## G. LangGraph
 
 （暂无反模式 - 待积累。常见候选：State 设计混乱、节点内调用副作用、checkpoint 缺失等。）
+
+---
+
+## G1. S3 API compatible does not mean env var compatible
+
+**Source**: PR #10 review (task #63 RustFS migration)
+**Severity**: High
+
+**Problem**: S3-compatible storage services share the S3 API, but their admin and bootstrap configuration is product-specific. Reusing guessed env var names, or env vars from another product/version, can make the container ignore intended credentials while client-side tests still pass with matching wrong assumptions.
+
+**Wrong example**:
+
+```yaml
+rustfs:
+  environment:
+    RUSTFS_ACCESS_KEY: rustfsadmin
+    RUSTFS_SECRET_KEY: rustfsadmin-please-change-me
+```
+
+**Correct example**:
+
+Verify the exact image/version first, then use a supported bootstrap mechanism. For the currently tested `rustfs/rustfs:latest`, `rustfs server --help` exposes CLI flags and `RUSTFS_ACCESS_KEY` / `RUSTFS_SECRET_KEY`; this project uses CLI flags so unsupported env names cannot be silently ignored.
+
+```yaml
+rustfs:
+  command:
+    - server
+    - --access-key
+    - rustfsadmin
+    - --secret-key
+    - rustfsadmin-please-change-me
+    - /data
+```
+
+**Codex self-check**:
+
+```bash
+docker exec rag-rustfs rustfs server --help | grep -E "access-key|secret-key|ROOT"
+grep -nE "RUSTFS_(ROOT_USER|ROOT_PASSWORD)" docker-compose.yml
+```
+
+The `--help` output must confirm the credential mechanism used by `docker-compose.yml`; unsupported credential env vars must not appear in compose. Also verify the Web Console/S3 credentials after recreating the container.
+
+---
+
+## G2. Do not reuse private health endpoints across storage products
+
+**Source**: PR #10 review (task #63 RustFS migration)
+**Severity**: Medium
+
+**Problem**: S3-compatible storage services do not necessarily implement each other's private health endpoints. A MinIO-specific endpoint such as `/minio/health/live` can fail on RustFS even when the S3 API is healthy.
+
+**Wrong example**:
+
+```yaml
+healthcheck:
+  test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+```
+
+**Correct example**:
+
+```yaml
+healthcheck:
+  test:
+    - "CMD-SHELL"
+    - "curl -s -o /dev/null -w '%{http_code}' http://localhost:9000/ | grep -qE '^(200|403)$'"
+```
+
+If RustFS later documents a stable `/health` or `/ready` endpoint in release notes, prefer `curl -f` against that official endpoint.
+
+**Codex self-check**:
+
+```bash
+grep -n "/minio/health/live" docker-compose.yml
+```
+
+The command must return no output unless the service is actually MinIO.
 
 ---
 

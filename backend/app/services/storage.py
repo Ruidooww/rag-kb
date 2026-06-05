@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from abc import ABC, abstractmethod
 from typing import Any, Final, cast
 
@@ -9,6 +10,7 @@ import boto3
 from anyio import to_thread
 from botocore.client import Config
 from botocore.exceptions import BotoCoreError, ClientError
+from fastapi import Request
 from loguru import logger
 
 from app.core.config import settings
@@ -17,6 +19,7 @@ from app.core.exceptions import AppException
 __all__ = ["DocumentStorage", "S3CompatibleStorage", "StorageError", "get_storage"]
 
 _BUCKET_KEY_PREFIX: Final = "documents"
+_DOC_ID_PATTERN: Final = re.compile(r"^[A-Za-z0-9._-]+$")
 _NO_SUCH_BUCKET_CODES: Final = {"404", "NoSuchBucket", "NotFound"}
 _NO_SUCH_KEY_CODES: Final = {"404", "NoSuchKey", "NotFound"}
 
@@ -67,7 +70,10 @@ class S3CompatibleStorage(DocumentStorage):
             config=Config(signature_version="s3v4"),
         )
         self._bucket = settings.storage_bucket
-        self._ensure_bucket()
+
+    async def ensure_ready(self) -> None:
+        """Ensure the backing bucket exists and is reachable."""
+        await to_thread.run_sync(self._ensure_bucket)
 
     def _ensure_bucket(self) -> None:
         try:
@@ -81,9 +87,11 @@ class S3CompatibleStorage(DocumentStorage):
             raise StorageError(f"Failed to access bucket {self._bucket}") from exc
 
     def _key(self, doc_id: str) -> str:
-        normalized_doc_id = doc_id.strip().lstrip("/")
+        normalized_doc_id = doc_id.strip()
         if not normalized_doc_id:
             raise StorageError("Document id must not be empty")
+        if not _DOC_ID_PATTERN.fullmatch(normalized_doc_id):
+            raise StorageError(f"Invalid document id: {doc_id}")
         return f"{_BUCKET_KEY_PREFIX}/{normalized_doc_id}"
 
     async def save(
@@ -163,9 +171,12 @@ class S3CompatibleStorage(DocumentStorage):
             raise StorageError(f"Failed to presign URL for {doc_id}") from exc
 
 
-def get_storage() -> DocumentStorage:
+def get_storage(request: Request) -> DocumentStorage:
     """Return the configured document storage implementation."""
-    return S3CompatibleStorage()
+    storage = getattr(request.app.state, "storage", None)
+    if storage is None:
+        raise StorageError("Document storage is not initialized")
+    return cast(DocumentStorage, storage)
 
 
 def _client_error_code(exc: ClientError) -> str:

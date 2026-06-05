@@ -43,10 +43,18 @@ services:
   rustfs:
     image: rustfs/rustfs:latest
     container_name: rag-rustfs
-    command: server /data --console-address ":9001"
+    command:
+      - server
+      - --access-key
+      - rustfsadmin
+      - --secret-key
+      - rustfsadmin-please-change-me
+      - --console-enable
+      - --console-address
+      - ":9001"
+      - /data
     environment:
-      RUSTFS_ACCESS_KEY: rustfsadmin
-      RUSTFS_SECRET_KEY: rustfsadmin-please-change-me
+      RUSTFS_CONSOLE_ENABLE: "true"
       RUSTFS_VOLUMES: /data
     ports:
       - "9000:9000"     # S3 API

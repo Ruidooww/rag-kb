@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     storage_secret_key: SecretStr
     storage_bucket: str
     storage_region: str = "us-east-1"
+    storage_public_endpoint: str | None = None
     app_env: str = "development"
     app_port: int = 8000
     app_log_level: str = "INFO"
