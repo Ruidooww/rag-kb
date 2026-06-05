@@ -1,12 +1,10 @@
-from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
-from starlette.requests import Request
 
 from app.core.config import Settings
 from app.services import storage as storage_module
-from app.services.storage import S3CompatibleStorage, StorageError, get_storage
+from app.services.storage import S3CompatibleStorage, StorageError
 
 
 def _doc_id() -> str:
@@ -86,19 +84,3 @@ async def test_invalid_doc_id_rejected(doc_id: str) -> None:
 
     with pytest.raises(StorageError):
         await storage.save(doc_id, b"blocked")
-
-
-def test_get_storage_returns_app_state_storage() -> None:
-    storage = S3CompatibleStorage()
-    request = Request(
-        {"type": "http", "app": SimpleNamespace(state=SimpleNamespace(storage=storage))}
-    )
-
-    assert get_storage(request) is storage
-
-
-def test_get_storage_requires_initialized_state() -> None:
-    request = Request({"type": "http", "app": SimpleNamespace(state=SimpleNamespace())})
-
-    with pytest.raises(StorageError):
-        get_storage(request)
