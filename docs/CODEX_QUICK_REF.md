@@ -178,6 +178,24 @@
 
 ---
 
+## 🤝 CRM 抽象层
+
+| 操作 | 方法 |
+|------|------|
+| 获取当前 CRM | `crm = get_crm()` |
+| 拿客户 | `customer = await crm.get_customer(customer_id)` |
+| 列客户 | `await crm.list_customers(region=..., industry=...)` |
+| 列合同 | `await crm.list_contracts(customer_id)` |
+| 列联系人 | `await crm.list_contacts(customer_id)` |
+| 列服务历史 | `await crm.list_service_history(customer_id)` |
+| 切换 provider | 改 `.env` 的 `CRM_PROVIDER`，业务代码零改动 |
+
+**业务代码禁止直接 import 任何 CRM SDK**（铁律 #9）—— 走 `services/crm.py`。
+**CRM 工具绝不允许进 EXTERNAL_TOOLS**（铁律 #10）—— 仅 `INTERNAL_TOOLS`。
+真实 provider（xiaoshouyi / fxiaoke / hubspot / salesforce）当前是 stub，厂家拍板后实现对应类。
+
+---
+
 ## 🛠 常用命令
 
 ```bash

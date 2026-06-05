@@ -39,6 +39,8 @@ class Settings(BaseSettings):
     allow_local_idp_in_prod: bool = False
     idp_provider: Literal["local", "feishu", "wecom", "wechat_open", "wechat_mp"] = "local"
     local_users: str = "[]"
+    crm_provider: Literal["mock", "xiaoshouyi", "fxiaoke", "hubspot", "salesforce"] = "mock"
+    mock_crm_data_path: str = "data/mock_crm"
     app_port: int = 8000
     app_log_level: str = "INFO"
 
