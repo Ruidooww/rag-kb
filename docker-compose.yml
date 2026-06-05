@@ -57,8 +57,12 @@ services:
       RUSTFS_CONSOLE_ENABLE: "true"
       RUSTFS_VOLUMES: /data
     ports:
-      - "9000:9000"     # S3 API
-      - "9001:9001"     # Web Console
+      # 宿主端口默认 9000/9001。Windows Hyper-V 通常保留 8999-9098 段，会导致
+      # bind 失败（HTTP 500 / "forbidden by its access permissions"）。
+      # 本机受影响时在 .env 设 STORAGE_API_PORT=9100 / STORAGE_CONSOLE_PORT=9101，
+      # 并同步把 STORAGE_ENDPOINT 改成 http://localhost:9100。
+      - "${STORAGE_API_PORT:-9000}:9000"     # S3 API
+      - "${STORAGE_CONSOLE_PORT:-9001}:9001" # Web Console
     volumes:
       - ./data/rustfs:/data
     restart: unless-stopped
