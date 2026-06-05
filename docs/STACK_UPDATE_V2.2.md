@@ -129,6 +129,22 @@ Tools:
 - 业务代码不得直接 import provider SDK。
 - Handoff §7 写清下一轮可复用的节点、state 和工具接口。
 
+## 7. 存储层调整：MinIO → RustFS
+
+### 变更原因
+
+- 规避 MinIO AGPLv3。
+- 为前台智能客服铺路，支持预签名 URL 和大文件上传。
+- RustFS 使用 Apache 2.0，Rust 单二进制部署更轻。
+
+### 抽象层设计
+
+`backend/app/services/storage.py` 提供 `DocumentStorage` ABC 和 `S3CompatibleStorage` 实现。业务代码保存、读取、删除文档或生成预签名下载 URL 时，只通过 `get_storage()` 入口访问对象存储。
+
+### Agent 集成
+
+Agent 不直接访问 RustFS，也不直接 import `boto3`。后续 Agent 通过 backend REST API（例如 `GET /api/v1/documents/{id}/file` 或预签名 URL 接口）访问文件，由后端服务层统一处理存储细节。
+
 ---
 
 _v2.2 | 最后更新：2026-06-04 | 任务：#65_

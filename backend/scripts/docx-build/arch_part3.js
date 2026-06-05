@@ -124,7 +124,7 @@ module.exports.part3 = () => [
       ["postgres", "postgres:16", "5432", "./pg_data"],
       ["redis", "redis:7", "6379", "-"],
       ["celery-worker", "复用 backend 镜像", "-", "./logs"],
-      ["minio", "minio/minio:latest", "9000/9001", "./minio_data"],
+      ["rustfs", "rustfs/rustfs:latest", "9000/9001", "./rustfs_data"],
       ["bge-m3", "infiniflow/bge-m3 或自定义", "8080", "./model_cache"],
     ],
     [2200, 3000, 1500, 2660]
@@ -152,7 +152,7 @@ module.exports.part3 = () => [
     "POSTGRES_URL=postgresql://user:pass@postgres:5432/rag",
     "QDRANT_URL=http://qdrant:6333",
     "REDIS_URL=redis://redis:6379",
-    "MINIO_ENDPOINT=minio:9000",
+    "STORAGE_ENDPOINT=http://rustfs:9000",
     "",
     "# === 业务参数（迁移时可调） ===",
     "CHUNK_SIZE=800",

@@ -114,8 +114,24 @@
 | D1 | 测试共享 app router | 🟡 中 |
 | E1 | 工厂函数加 @lru_cache | 🔴 高 |
 | F1 | spec 依赖列表与实现描述不一致 | 🟡 中 |
+| G1 | S3-compatible env vars 误用 | 高 |
+| G2 | Private health endpoint 误用 | 中 |
 
 新发现的反模式必须在 Handoff §8 E3 追加到 ANTIPATTERNS.md。
+
+---
+
+## 💾 对象存储（RustFS）
+
+| 操作 | 方法 |
+|------|------|
+| 保存文件 | `await get_storage().save(doc_id, bytes)` |
+| 读文件 | `await get_storage().load(doc_id) -> bytes` |
+| 预签名下载 URL | `await get_storage().get_presigned_download_url(doc_id, expires_in=3600)` |
+| 删除 | `await get_storage().delete(doc_id)` |
+| Web Console | http://localhost:9001/rustfs/console/access-keys (account/password from `.env.example` `STORAGE_*`) |
+
+**业务代码禁止直接 import boto3** —— 走 `services/storage.py` 抽象。
 
 ---
 

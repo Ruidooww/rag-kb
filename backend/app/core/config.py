@@ -26,10 +26,13 @@ class Settings(BaseSettings):
     postgres_url: str
     qdrant_url: str
     qdrant_collection: str = "rag_chunks"
-    minio_endpoint: str
-    minio_access_key: SecretStr
-    minio_secret_key: SecretStr
-    minio_bucket: str
+    storage_backend: str = "rustfs"
+    storage_endpoint: str
+    storage_access_key: SecretStr
+    storage_secret_key: SecretStr
+    storage_bucket: str
+    storage_region: str = "us-east-1"
+    storage_public_endpoint: str | None = None
     app_env: str = "development"
     app_port: int = 8000
     app_log_level: str = "INFO"

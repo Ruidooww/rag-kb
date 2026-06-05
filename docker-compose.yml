@@ -39,25 +39,37 @@ services:
       timeout: 5s
       retries: 3
 
-  # ===== 对象存储（原始文档）=====
-  minio:
-    image: minio/minio:latest
-    container_name: rag-minio
-    command: server /data --console-address ":9001"
+  # ===== 对象存储（RustFS，S3 兼容，Apache 2.0）=====
+  rustfs:
+    image: rustfs/rustfs:latest
+    container_name: rag-rustfs
+    command:
+      - server
+      - --access-key
+      - rustfsadmin
+      - --secret-key
+      - rustfsadmin-please-change-me
+      - --console-enable
+      - --console-address
+      - ":9001"
+      - /data
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_VOLUMES: /data
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "9000:9000"     # S3 API
+      - "9001:9001"     # Web Console
     volumes:
-      - ./data/minio:/data
+      - ./data/rustfs:/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test:
+        - "CMD-SHELL"
+        - "curl -s -o /dev/null -w '%{http_code}' http://localhost:9000/ | grep -qE '^(200|403)$'"
       interval: 10s
       timeout: 5s
-      retries: 3
+      retries: 5
+      start_period: 15s
 
   # ===== Embedding 服务（bge-m3 通过 infinity）=====
   infinity:
@@ -93,7 +105,7 @@ services:
   #       condition: service_healthy
   #     postgres:
   #       condition: service_healthy
-  #     minio:
+  #     rustfs:
   #       condition: service_healthy
   #     infinity:
   #       condition: service_healthy
