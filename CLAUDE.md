@@ -54,7 +54,7 @@ codegraph status # 看索引状态
 
 ---
 
-## 🔒 八条迁移友好铁律（最高优先级）
+## 🔒 十条迁移友好铁律（最高优先级）
 
 **违反任何一条 = 重做该任务。**
 
@@ -103,6 +103,67 @@ codegraph status # 看索引状态
   - **RAG 工具层**：LlamaIndex（embedding / LLM / rerank / chunking）
   - **Agent 编排层**：LangGraph（状态图 / 节点 / 条件边 / 工具调用）
   - **桥接**：LangGraph 节点是 Python 函数，可调任何 LlamaIndex 工具
+
+### 铁律 #9：CRM 调用走统一抽象层（services/crm.py）
+
+- ✅ 允许：`from app.services.crm import get_crm`，业务调 `await crm.get_customer(...)` / `await crm.list_contracts(...)`
+- ❌ 禁止：`import xiaoshouyi` / `import fxiaoke` / `from hubspot import HubSpot`
+- ❌ 禁止：在 Agent 节点 / API endpoint 直接拼 CRM 厂家 HTTP / SDK
+- 分层原则与铁律 #1 同构：CRM 厂家拍板前接口先冻结（`CRMService` ABC + MockCRM 实现），落地厂家时只改 `services/crm.py` 一个文件
+- LangGraph Agent 内的 CRM 工具（`get_customer_basic` / `get_contract` / ...）必须经过 `services/crm.py`，节点禁止直连 SDK
+- **CRM 工具集物理隔离**：CRM 工具只能进 `INTERNAL_TOOLS`，绝不允许进 `EXTERNAL_TOOLS`（见铁律 #10）
+
+### 铁律 #10：Agent 工具集物理隔离（外部 vs 内部）
+
+权限不在 prompt 里，权限在工具集里。LLM 即使被 prompt injection，调不到不存在的工具。
+
+- ✅ 允许：构建 Agent 前根据 `user.is_external` 选 `EXTERNAL_TOOLS` 或 `INTERNAL_TOOLS`
+- ❌ 禁止："一个 Agent 装所有工具靠 prompt 限制"——prompt 不是安全边界
+- ❌ 禁止：CRM 工具 / 内部 `search_docs` / `get_contract` 进 `EXTERNAL_TOOLS`
+- ❌ 禁止：通过参数把 `internal=True` 传给 EXTERNAL_TOOLS 里的工具"开权限"
+- 标准模式：
+  ```python
+  EXTERNAL_TOOLS = [search_external_docs]                          # 公众号 / 客服渠道 Agent
+  INTERNAL_TOOLS = [search_docs, get_customer_basic, get_contract] # 飞书员工 Agent
+
+  def build_agent(user: User):
+      tools = EXTERNAL_TOOLS if user.is_external else INTERNAL_TOOLS
+      return create_react_agent(llm, tools)
+  ```
+- 4 层外部访问防御（缺一层即重做该任务）：
+  | 层 | 机制 |
+  |----|------|
+  | 1 | 工具集物理隔离（CRM / 内部 search 不进 EXTERNAL_TOOLS）|
+  | 2 | 每个内部工具入口 `if user.is_external: raise PermissionError`（二次校验）|
+  | 3 | API endpoint 物理隔离（`/api/v1/internal/*` vs `/api/v1/public/*` 独立 router 树）|
+  | 4 | 审计日志（外部 user 触达内部工具 → 立即告警 + 事后追责）|
+
+---
+
+## 🧭 横切原则（不到铁律级别，每个任务都要遵守）
+
+### 原则 P1：API 响应脱敏
+
+- 任何返回客户/员工敏感字段（手机号 / 邮箱 / 身份证 / 合同金额 / 内部部门代码 / 用量与费用）的 endpoint，
+  必须经 `app.api.utils.sanitize(payload, user)` 处理后再返回
+- `sanitize()` 根据 `user.is_external` / `user.role` 决定字段可见性；外部用户拿到掩码版（如 `138****5678`）
+- 不要在 Pydantic response model 里写 raw 字段然后"前端隐藏"——脱敏必须在 API 层完成
+- 测试断言：外部用户拉任何 endpoint 都不应在 JSON 里出现 11 位手机号 / 完整邮箱
+
+### 原则 P2：工具集版本化
+
+- `EXTERNAL_TOOLS` / `INTERNAL_TOOLS` 列表必须在单文件集中定义（如 `app/agents/tool_registry.py`）
+- 每次变更（加/删/改工具）必须配 1 个断言测试，证明工具集 diff 符合预期
+- 反例：CRM 工具误进 `EXTERNAL_TOOLS` → 单测立刻报错，不允许靠 code review 兜底
+- 见 Phase 2+ 待办「Agent 工具集断言测试」
+
+### 原则 P3：内外路由树严格分流
+
+- FastAPI 维护两个独立 router：`internal_router`（挂 `/api/v1/internal/`）+ `public_router`（挂 `/api/v1/public/`）
+- admin / 用量 / 知识缺口 / CRM / 内部 search endpoint 只挂 `internal_router`
+- 公众号 / 外部客服 endpoint 只挂 `public_router`
+- 真正中性 endpoint（如 feedback、health）才挂顶层 `api_router`
+- 见 #68 spec 落地
 
 ---
 
@@ -211,6 +272,10 @@ uv run pytest backend/tests
 - ❌ 忽略类型错误（`# type: ignore` 必须附注释说明）
 - ❌ 删除/重命名公共 API 不更新调用方
 - ❌ 跳过测试（`@pytest.mark.skip` 必须附 issue 链接）
+- ❌ 业务代码直接 import CRM SDK（违反铁律 #9）
+- ❌ "一个 Agent 装所有工具靠 prompt 限制权限"（违反铁律 #10）
+- ❌ admin / 用量 / CRM endpoint 挂到 `/public/*` 或外部可达 router 树（违反原则 P3）
+- ❌ 在 Pydantic response 直接返回手机号 / 邮箱 / 合同金额等明文字段给外部用户（违反原则 P1）
 
 ---
 
@@ -255,4 +320,9 @@ type：`feat` / `fix` / `refactor` / `test` / `docs` / `chore`
 
 ---
 
-_本文件版本：v1.0 | 最后更新：2026-06-03_
+_本文件版本：v1.1 | 最后更新：2026-06-05_
+
+变更（v1.1）：
+- 八条铁律扩为十条：加 #9（CRM 抽象层）+ #10（Agent 工具集物理隔离 + 4 层外部访问防御）
+- 新增「横切原则」段：P1 API 响应脱敏 / P2 工具集版本化 / P3 内外路由树严格分流
+- 禁止事项清单同步扩展

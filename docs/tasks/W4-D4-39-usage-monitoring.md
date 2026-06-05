@@ -248,6 +248,12 @@ CRUD + 聚合查询：
 
 如果 #37 已合并，**追加** 4 个 usage endpoint 到现有 `admin.py`；否则新建。
 
+**路由强制内部隔离**（对接 #68 + #37）：
+- 4 个 usage endpoint 必须挂在 internal 子树（`/api/v1/internal/admin/usage/*`）
+- **禁止**挂到 `/public/*` 或任何外部可达路由
+- usage_records 含用量统计 + 费用数据，外部用户绝不应见
+- 与 #37 admin endpoint 共用 `internal_router`，遵守同一防御层 3 规则
+
 ### 4.11 `backend/app/models/usage.py`（新建 Pydantic）
 
 `UsageSummary` / `UsageByModel` / `UsageByEndpoint` / `UsageTimelinePoint`。
@@ -467,6 +473,7 @@ def _estimate_tokens(text: str) -> int:
 - ❌ 拦截时假定方法名（用 `__getattr__` 透传，只显式拦截需要打点的方法）
 - ❌ 给 `_estimate_tokens` 写 5 行代码就当准确值（spec 注明粗估 + 控制台校准）
 - ❌ admin endpoint 加 `@lru_cache` 缓存（反模式 E1）
+- ❌ 把 usage admin endpoint 挂到 `/public/*` 或外部可达 router 树（防御层 3，违反即重做）
 - ❌ wrap 后修改 `inner` 对象的状态（保持只读）
 - ❌ 给 `usage_records` 表设主键以外的唯一约束（每条调用都得记，重复也得记）
 
@@ -539,7 +546,8 @@ Handoff §7 应说明：
 4. 定价表在 `config.yaml#pricing`，调价改 yaml 即可
 5. 月度预算 `MONTHLY_BUDGET_CNY=500.0`，超 100% summary 响应 `budget_utilization_pct >= 1.0`
 6. 真实告警通知（邮件/企微）待后续任务实现
-7. `/admin/usage/*` Phase 1 无鉴权，Phase 2 #42 前必须挂
+7. `/admin/usage/*` Phase 1 无鉴权，Phase 2 #42 前必须挂权限
+8. usage endpoint 物理路径强制 internal（#68），#37 / #39 共用同一规则
 
 ---
 
@@ -552,4 +560,8 @@ Handoff §7 应说明：
 
 ---
 
-_v1.0 | 任务 ID：#39 | 最后更新：2026-06-05_
+_v1.1 | 任务 ID：#39 | 最后更新：2026-06-05_
+
+变更（v1.1）：
+- 4 个 usage admin endpoint 强制挂 internal 子树（对接 #68 + #37，防御层 3 物理路径隔离）
+- 与 #37 admin endpoint 共用 `internal_router`，统一防御层 3 规则

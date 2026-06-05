@@ -203,16 +203,27 @@ async def submit_feedback(
 - `GET /admin/knowledge-gaps/top`
 - `GET /admin/feedback/recent`
 
-Phase 1 阶段不加鉴权，**但要在 spec 注释里明确"Phase 2 #42 ACL 上线后必须挂 admin 权限校验"**。
+**路由强制内部隔离**（对接 #68 内外隔离架构）：
+
+- `admin.router` 必须挂载到内部 router 树（`/api/v1/internal/admin/*`），**禁止**挂到 `/public/*`
+- 即使 Phase 1 #42 ACL 未上线，物理路径隔离也要先到位（防御层 3：API endpoint 物理隔离）
+- Phase 2 #42 ACL 上线后追加权限校验（admin role + `is_external=False` 双重断言）
+- 文件头注释明确写："此 router 仅供 internal 树挂载，禁止接入 /public/* 或 /api/v1/public/*"
 
 ### 4.11 `backend/app/api/router.py`（修改）
 
-追加：
+追加（注意 internal / public 分流）：
 ```python
 from app.api import admin, feedback
+
+# feedback 是用户主动反馈，内外都可用（外部用户也能给公众号答案打分）
 api_router.include_router(feedback.router)
-api_router.include_router(admin.router)
+
+# admin 强制挂内部子树（#68 外部隔离要求）
+internal_router.include_router(admin.router)  # 不要用 api_router.include_router!
 ```
+
+**反模式提醒**：如果项目里还没有 `internal_router` / `public_router` 分流（#68 落地前的过渡期），admin.router 暂挂 `api_router` 但**必须**在文件头注释标 TODO，#68 合并时第一时间迁移。
 
 ### 4.12 `backend/app/api/deps.py`（修改）
 
@@ -242,7 +253,8 @@ api_router.include_router(admin.router)
 | 查 Top 缺口 | `GET /api/v1/admin/knowledge-gaps/top?since=7d` |
 | 查最近差评 | `GET /api/v1/admin/feedback/recent?limit=100` |
 
-**Phase 2 #42 上线后必须给 admin endpoint 挂权限**。
+**admin endpoint 物理路径强制 internal**（对接 #68）：禁止挂 `/public/*`，违反即重做。
+**Phase 2 #42 上线后必须**给 admin endpoint 挂权限校验（admin role + `is_external=False`）。
 ```
 
 ---
@@ -433,6 +445,7 @@ async def recent_feedback(
 - ❌ 落库失败抛错给用户（必须 try/except + log）
 - ❌ admin endpoint 加 `@lru_cache` 缓存结果（反模式 E1）
 - ❌ 给 admin endpoint 加假鉴权（Phase 1 不做鉴权，但要在注释 + Handoff 标 TODO）
+- ❌ 把 admin.router 挂到 `/public/*` 或外部可达的 router 树（防御层 3 物理隔离，违反即重做）
 - ❌ `query_normalized` 用 `lower()` 跳过 trim（必须 `.strip().lower()`）
 - ❌ Feedback `rating` 用 free text（必须 Enum）
 - ❌ 把 `low_confidence_threshold` 写死成 0.5（必须 settings 字段）
@@ -504,4 +517,8 @@ Handoff §7 应说明：
 
 ---
 
-_v1.0 | 任务 ID：#37 | 最后更新：2026-06-05_
+_v1.1 | 任务 ID：#37 | 最后更新：2026-06-05_
+
+变更（v1.1）：
+- admin.router 强制挂 internal 子树（对接 #68 内外隔离架构，防御层 3 物理路径隔离）
+- 过渡期（#68 未合并）暂挂 api_router 但文件头必须留 TODO，#68 合并时第一时间迁移

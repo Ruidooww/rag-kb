@@ -57,6 +57,8 @@
 - 用户来源：env 配 `LOCAL_USERS` JSON 字符串
 - 密码：bcrypt hash
 - 部门：env 里直接指定 `internal_code`（跳过 dept_mapping，因为本地账号没有外部 dept_id）
+- **生产防呆**：`__init__` 时检测 `settings.app_env == "production"` 且未显式开启 `allow_local_idp_in_prod` → 直接抛 `AuthError` 拒绝启动（避免线上误用本地账号绕过 OAuth）
+- LocalIdP 返回的 `User.is_external = False`（本地账号永远是内部员工）
 
 ### 3.5 4 个 stub providers
 - `FeishuIdP` / `WeComIdP` / `WeChatOpenIdP` / `WeChatMpIdP`
@@ -71,13 +73,18 @@
 - `idp_provider: Literal["local", "feishu", "wecom", "wechat_open", "wechat_mp"] = "local"`
 - `local_users: str = "[]"`  # JSON 字符串
 - `postgres_url: str`（如未存在）
+- `app_env: Literal["dev", "staging", "production"] = "dev"`（生产防呆依据）
+- `allow_local_idp_in_prod: bool = False`（紧急逃生口，需显式开启 + 写明原因到注释）
 
 ### 3.8 测试覆盖
 - LocalIdP 登录成功/失败
+- LocalIdP 在 `app_env=production` + 未开 escape hatch 时 init 抛错
+- LocalIdP 在 `app_env=production` + `allow_local_idp_in_prod=true` 时 init 通过（带 log warning）
 - dept_mapping CRUD
 - get_idp 工厂分支
 - 4 stub provider 调用抛 NotImplementedError
-- User schema 默认值
+- User schema 默认值 + `is_external` 默认 False
+- `WeChatOpenIdP` / `WeChatMpIdP` 未来实现时返回的 User 必须 `is_external=True`（spec 注释说明，stub 阶段无测试）
 
 ---
 
@@ -93,9 +100,13 @@ uv add --dev psycopg2-binary  # alembic 同步连接用
 ### 4.2 `backend/.env.example`（追加段落）
 
 ```env
+# ===== 运行环境（生产防呆依据）=====
+APP_ENV=dev                              # dev / staging / production
+ALLOW_LOCAL_IDP_IN_PROD=false            # 紧急逃生口：true 时允许 production 跑 LocalIdP
+
 # ===== 身份认证（IdP）=====
 IDP_PROVIDER=local                # local / feishu / wecom / wechat_open / wechat_mp
-LOCAL_USERS=[]                    # JSON: [{"username":"alice","password_hash":"$2b$..","dept":"tech","role":"employee"}]
+LOCAL_USERS=[]                    # JSON: [{"username":"alice","password_hash":"$2b$..","dept":"tech","role":"employee","is_external":false}]
 
 # ===== PostgreSQL =====
 POSTGRES_URL=postgresql+asyncpg://rag:rag@localhost:5432/rag_kb
@@ -108,6 +119,8 @@ POSTGRES_URL_SYNC=postgresql+psycopg2://rag:rag@localhost:5432/rag_kb  # alembic
 from typing import Literal
 
 # 已有 Settings 类内追加：
+app_env: Literal["dev", "staging", "production"] = "dev"
+allow_local_idp_in_prod: bool = False
 idp_provider: Literal["local", "feishu", "wecom", "wechat_open", "wechat_mp"] = "local"
 local_users: str = "[]"
 postgres_url: SecretStr
@@ -410,10 +423,10 @@ class Token(BaseModel):
 
 
 class User(BaseModel):
-    """登录后的用户上下文。供 ACL 中间件使用。"""
+    """登录后的用户上下文。供 ACL 中间件 + 工具集选择器使用。"""
 
     user_id: str  # 内部唯一 ID（external_provider:external_user_id）
-    external_provider: str  # local / feishu / wecom / ...
+    external_provider: str  # local / feishu / wecom / wechat_open / wechat_mp
     external_user_id: str
     display_name: str
     email: str | None = None
@@ -421,6 +434,10 @@ class User(BaseModel):
     role: str = "employee"  # employee / manager / admin
     max_visibility: Visibility = Visibility.INTERNAL
     allowed_depts: list[str] = Field(default_factory=list)
+    # 内外身份标记：True = 外部客户/公众号匿名访问；False = 公司员工
+    # 用于工具集选择（EXTERNAL_TOOLS vs INTERNAL_TOOLS，见 CLAUDE.md 铁律 #10）
+    # 以及 API 路由分流（/public/* vs /internal/*）
+    is_external: bool = False
 
 
 # === ABC ===
@@ -445,6 +462,19 @@ class LocalIdP(IdentityProvider):
     """
 
     def __init__(self) -> None:
+        # 生产防呆：production 环境默认禁用 LocalIdP（避免线上误用本地账号绕过 OAuth）
+        if settings.app_env == "production" and not settings.allow_local_idp_in_prod:
+            raise AuthError(
+                "LocalIdP is disabled in production. "
+                "Set ALLOW_LOCAL_IDP_IN_PROD=true to override (emergency only)."
+            )
+        if settings.app_env == "production" and settings.allow_local_idp_in_prod:
+            from loguru import logger
+
+            logger.warning(
+                "LocalIdP enabled in PRODUCTION via ALLOW_LOCAL_IDP_IN_PROD escape hatch"
+            )
+
         raw = settings.local_users
         try:
             self._users = {u["username"]: u for u in json.loads(raw)}
@@ -486,6 +516,7 @@ class LocalIdP(IdentityProvider):
             role=role,
             max_visibility=_ROLE_MAX_VISIBILITY.get(role, Visibility.INTERNAL),
             allowed_depts=[dept] if dept else [],
+            is_external=False,  # 本地账号永远是内部员工
         )
 
 
@@ -511,7 +542,13 @@ class WeComIdP(IdentityProvider):
 
 
 class WeChatOpenIdP(IdentityProvider):
-    """微信开放平台扫码登录（个人微信）。需手工绑定 openid ↔ user_id。"""
+    """微信开放平台扫码登录（个人微信，外部客户身份）。
+
+    实现时必须：
+    - get_user_info 返回的 User.is_external = True
+    - 不查 dept_mapping（外部用户无内部部门）
+    - max_visibility 强制 = Visibility.PUBLIC
+    """
 
     async def exchange_code(self, code: str) -> Token:
         raise NotImplementedError("WeChatOpenIdP: implement when external login needed")
@@ -521,7 +558,13 @@ class WeChatOpenIdP(IdentityProvider):
 
 
 class WeChatMpIdP(IdentityProvider):
-    """微信公众号匿名访问（强制 audience=customer_facing）。"""
+    """微信公众号匿名访问（外部客户身份，强制 audience=customer_facing）。
+
+    实现时必须：
+    - get_user_info 返回的 User.is_external = True
+    - max_visibility 强制 = Visibility.PUBLIC
+    - 仅供 /public/* 路由消费（见 #68）
+    """
 
     async def exchange_code(self, code: str) -> Token:
         raise NotImplementedError("WeChatMpIdP: implement for external customer service")
@@ -573,11 +616,16 @@ def get_idp() -> IdentityProvider:
 - [ ] 密码错抛 `AuthError`
 - [ ] 用户名不存在抛 `AuthError`
 - [ ] `get_user_info` 返回的 User 含 `internal_dept_code` 和 `max_visibility`
+- [ ] `APP_ENV=production` + `ALLOW_LOCAL_IDP_IN_PROD=false` → init 抛 `AuthError`
+- [ ] `APP_ENV=production` + `ALLOW_LOCAL_IDP_IN_PROD=true` → init 通过 + 触发 warning log
+- [ ] `APP_ENV=dev` → init 永远通过
 
 ### 6.5 User schema
 - [ ] `role=employee` → `max_visibility=internal`
 - [ ] `role=manager` → `max_visibility=confidential`
 - [ ] `allowed_depts` 默认 `[]`，LocalIdP 自动填 `[dept]`
+- [ ] `is_external` 默认 `False`
+- [ ] LocalIdP 返回的 User `is_external=False`（硬编码，不读 user dict）
 
 ### 6.6 API endpoint
 - [ ] `POST /api/v1/auth/login` 接受 `{"code":"alice:pwd"}` 返回 token + user
@@ -697,4 +745,9 @@ Handoff §7 应说明：
 
 ---
 
-_v1.0 | 任务 ID：#67 | 最后更新：2026-06-05_
+_v1.1 | 任务 ID：#67 | 最后更新：2026-06-05_
+
+变更（v1.1）：
+- 加 `User.is_external` 字段（驱动工具集选择 + API 路由分流，对接 CLAUDE.md 铁律 #10、#68）
+- LocalIdP 加生产防呆：`APP_ENV=production` 时默认禁用，需 `ALLOW_LOCAL_IDP_IN_PROD=true` 显式开启
+- `WeChatOpenIdP` / `WeChatMpIdP` stub 注释明确：实现时返回的 `User.is_external` 必须为 True，max_visibility=PUBLIC
