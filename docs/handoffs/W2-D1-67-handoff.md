@@ -189,7 +189,11 @@ All installed packages are compatible
 - **上下文 4**：后续新增业务表从 `backend/migrations/versions/0001_dept_mapping.py` 模式继续，先改 ORM，再生成/审核 migration，最后 `alembic upgrade head`。
 - **上下文 5**：外部微信登录 provider 未来必须走 public route 和 public visibility；见 `backend/app/services/auth.py:150` / `backend/app/services/auth.py:164` stub 文档。
 - **上下文 6**：LocalIdP 的 `LOCAL_USERS` 格式在 `.env.example`，密码必须 bcrypt hash，测试里使用动态 `bcrypt.hashpw()` 生成，不要提交真实 hash/账号。
-- **上下文 7**：RustFS 当前未运行导致完整 integration 不稳定；如果下一轮需要全量 `pytest -v`，先修 9001 端口/RustFS healthcheck。
+- **上下文 7**：RustFS 当前未运行导致完整 integration 不稳定；如果下一轮需要全量 `pytest -v`，先修 9001 端口/RustFS healthcheck。**已解决**（commit `34e51f8`）：Windows Hyper-V 保留 8999-9298 段，docker-compose 改用 `${STORAGE_API_PORT:-9000}` / `${STORAGE_CONSOLE_PORT:-9001}` 变量化，本机 .env 实测 7900/7901 跑通。
+- **上下文 8（PR #14 review N1 警告，post-merge 追加）**：`LocalIdP.exchange_code` 在 `backend/app/services/auth.py:106` 返回 `Token(access_token=username, ...)`，**access_token 是明文 username，没有签名 / 没有有效期校验 / 没有不可猜性**。`get_user_info` 接受任意字符串。**Phase 2 ACL 中间件严禁直接拿 header 里的 raw token 调用 `get_user_info` 鉴权**——否则任何人猜中 username 字符串就能拿到该 user 的 ACL 上下文（`is_external` / `role` / `allowed_depts`）。
+  - 必须做的事：ACL 实现必须做 token 校验层。可选方案 (a) JWT 签名 + 短 TTL；(b) 服务端 session store + opaque token；(c) 仅允许 LocalIdP 在 dev 环境跑 ACL bypass，prod 路径强制 reject。
+  - 当前 LocalIdP 受 production 防呆（`auth.py:78`）保护，dev/test 仅限员工接触，本 PR 范围内可接受。
+  - 详见 [docs/reviews/PR-14.md](../reviews/PR-14.md) §2 N1。
 
 ---
 
