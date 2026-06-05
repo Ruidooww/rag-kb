@@ -165,6 +165,18 @@ codegraph status # 看索引状态
 - 真正中性 endpoint（如 feedback、health）才挂顶层 `api_router`
 - 见 #68 spec 落地
 
+### 原则 P4：Codex 子 agent 协作纪律
+
+完整规则见 `docs/TASK_PROMPT_TEMPLATE.md#子 agent 协作规范`，关键点：
+
+- **范围**：严格按已有计划执行，不扩大范围（顺手能修的记到 Handoff §3 偏差）
+- **计划先行**：非简单修改（>1 文件 / 涉及核心抽象 / 改铁律相关层）必须先出实施计划再改代码
+- **三关边界检查**：实施前 / 实施中 / 合并前都要对照 spec §3 §7 + CLAUDE.md 铁律自查
+- **并行派发条件**（同时满足才并行）：≥ 2 个互不依赖子任务 + 文件冲突风险低 + 每个 sub-agent 分工清晰
+- **主 agent 职责**：派发 + 集成 + 冲突处理 + 一致性检查 + 跑最终 SELF_REVIEW Part A
+- **测试纪律**：sub-agent 完成不等于通过；最终验证必须在集成后的分支上执行
+- 违反任一项 → 偏差计入 Handoff §3
+
 ---
 
 ## 技术栈版本（强制）
@@ -276,6 +288,7 @@ uv run pytest backend/tests
 - ❌ "一个 Agent 装所有工具靠 prompt 限制权限"（违反铁律 #10）
 - ❌ admin / 用量 / CRM endpoint 挂到 `/public/*` 或外部可达 router 树（违反原则 P3）
 - ❌ 在 Pydantic response 直接返回手机号 / 邮箱 / 合同金额等明文字段给外部用户（违反原则 P1）
+- ❌ sub-agent 并行修改同一批文件不协调 / 跳过集成阶段最终验证（违反原则 P4）
 
 ---
 
@@ -320,7 +333,11 @@ type：`feat` / `fix` / `refactor` / `test` / `docs` / `chore`
 
 ---
 
-_本文件版本：v1.1 | 最后更新：2026-06-05_
+_本文件版本：v1.2 | 最后更新：2026-06-05_
+
+变更（v1.2）：
+- 新增原则 P4 Codex 子 agent 协作纪律（范围 / 计划 / 边界检查 / 并行条件 / 主 agent 集成 / 测试纪律）
+- 禁止事项加：sub-agent 并行冲突不协调 / 跳过集成阶段最终验证
 
 变更（v1.1）：
 - 八条铁律扩为十条：加 #9（CRM 抽象层）+ #10（Agent 工具集物理隔离 + 4 层外部访问防御）

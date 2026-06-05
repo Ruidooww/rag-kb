@@ -6,7 +6,7 @@
 
 ---
 
-## 🔒 八条迁移友好铁律（必查，违反即重做）
+## 🔒 十条迁移友好铁律（必查，违反即重做）
 
 | # | 铁律 | ❌ 禁止 | ✅ 允许 |
 |---|------|--------|--------|
@@ -18,8 +18,21 @@
 | 6 | 关键参数走 config.yaml | 硬编码 chunk_size=800 | settings.chunk_size |
 | 7 | 保留 Ollama 兼容性 | 改业务代码切模型 | 只改 .env |
 | 8 | Agent 编排走 LangGraph | LlamaIndex Workflows 写 Agent | `StateGraph` + 节点函数 |
+| 9 | CRM 调用走 app.services.crm | `import xiaoshouyi` / `import hubspot` | `from app.services.crm import get_crm` |
+| 10 | Agent 工具集物理隔离 | "一个 Agent 装所有工具靠 prompt 限制" | `tools = EXTERNAL_TOOLS if user.is_external else INTERNAL_TOOLS` |
 
 **违反任一 = 重做**。详情：`CLAUDE.md §铁律` 或 `SELF_REVIEW.md Part A3`。
+
+## 🧭 横切原则（每个任务都要遵守）
+
+| # | 原则 | 关键点 |
+|---|------|--------|
+| P1 | API 响应脱敏 | 敏感字段经 `sanitize(payload, user)` 后返回，外部用户拿掩码版 |
+| P2 | 工具集版本化 | `EXTERNAL_TOOLS` / `INTERNAL_TOOLS` 集中定义 + 断言测试防误改 |
+| P3 | 内外路由树严格分流 | `internal_router` / `public_router` 物理拆分；admin / CRM 只挂 internal |
+| P4 | Codex 子 agent 协作纪律 | 范围不扩 / 计划先行 / 三关边界 / 并行需互不依赖 / 主 agent 集成 |
+
+详情：`CLAUDE.md §横切原则` / `TASK_PROMPT_TEMPLATE.md §子 agent 协作规范`。
 
 ---
 
@@ -69,6 +82,21 @@
 
 任何一步遇阻 / Part D 硬触发 → 停下问用户，**绝不自动决策**。
 详情：`TASK_PROMPT_TEMPLATE.md`。
+
+---
+
+## 🧑‍🤝‍🧑 子 agent 调度速查（落地原则 P4）
+
+| 时机 | 动作 |
+|------|------|
+| 任务非简单修改（>1 文件 / 改抽象 / 改铁律层）| 先出实施计划再改 |
+| ≥ 2 个互不依赖任务 + 文件冲突低 + 边界清晰 | 派 sub-agent 并行 |
+| sub-agent 边界 | 明确文件清单 + 不重叠 + 不可触碰清单 |
+| sub-agent 完成 | 主 agent 跑集成 + 一致性检查 |
+| 最终验证 | 必须在集成后的分支上跑完 SELF_REVIEW Part A |
+
+**禁止**：sub-agent 自行扩范围 / 多个 sub-agent 改同一批文件 / 跳过集成测试。
+详情：`TASK_PROMPT_TEMPLATE.md` 的「子 agent 协作规范」段。
 
 ---
 
@@ -180,4 +208,9 @@ Squash merge + 删 feature 分支
 
 ---
 
-_v1.1 | 与 `SELF_REVIEW.md v2.1` / `ANTIPATTERNS.md v1.3` 配套 | 最后更新：2026-06-05_
+_v1.2 | 与 `SELF_REVIEW.md v2.1` / `ANTIPATTERNS.md v1.3` / `CLAUDE.md v1.2` 配套 | 最后更新：2026-06-05_
+
+变更（v1.2）：
+- 铁律 8 条同步到 10 条（+ #9 CRM 抽象 / #10 Agent 工具集物理隔离）
+- 新增「横切原则」速查表（P1-P4）
+- 新增「子 agent 调度速查」段（落地原则 P4）
