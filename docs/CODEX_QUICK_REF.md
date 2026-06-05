@@ -114,8 +114,8 @@
 | D1 | 测试共享 app router | 🟡 中 |
 | E1 | 工厂函数加 @lru_cache | 🔴 高 |
 | F1 | spec 依赖列表与实现描述不一致 | 🟡 中 |
-| G1 | S3-compatible env vars 误用 | 高 |
-| G2 | Private health endpoint 误用 | 中 |
+| H1 | S3 兼容存储 env var 误用（产品私有） | 🔴 高 |
+| H2 | S3 兼容存储私有 health endpoint 跨产品复用 | 🟡 中 |
 
 新发现的反模式必须在 Handoff §8 E3 追加到 ANTIPATTERNS.md。
 
@@ -180,4 +180,4 @@ Squash merge + 删 feature 分支
 
 ---
 
-_v1.0 | 与 `SELF_REVIEW.md v2.1` 等配套 | 最后更新：2026-06-04_
+_v1.1 | 与 `SELF_REVIEW.md v2.1` / `ANTIPATTERNS.md v1.3` 配套 | 最后更新：2026-06-05_

@@ -10,13 +10,12 @@ import boto3
 from anyio import to_thread
 from botocore.client import Config
 from botocore.exceptions import BotoCoreError, ClientError
-from fastapi import Request
 from loguru import logger
 
 from app.core.config import settings
 from app.core.exceptions import AppException
 
-__all__ = ["DocumentStorage", "S3CompatibleStorage", "StorageError", "get_storage"]
+__all__ = ["DocumentStorage", "S3CompatibleStorage", "StorageError"]
 
 _BUCKET_KEY_PREFIX: Final = "documents"
 _DOC_ID_PATTERN: Final = re.compile(r"^[A-Za-z0-9._-]+$")
@@ -169,14 +168,6 @@ class S3CompatibleStorage(DocumentStorage):
             )
         except (BotoCoreError, ClientError) as exc:
             raise StorageError(f"Failed to presign URL for {doc_id}") from exc
-
-
-def get_storage(request: Request) -> DocumentStorage:
-    """Return the configured document storage implementation."""
-    storage = getattr(request.app.state, "storage", None)
-    if storage is None:
-        raise StorageError("Document storage is not initialized")
-    return cast(DocumentStorage, storage)
 
 
 def _client_error_code(exc: ClientError) -> str:
