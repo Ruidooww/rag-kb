@@ -30,7 +30,7 @@ def test_audience_enum_value() -> None:
 
 def test_visibility_rejects_unknown() -> None:
     with pytest.raises(ValidationError):
-        DocumentMetaSchema(visibility="secret")  # type: ignore[arg-type]
+        DocumentMetaSchema.model_validate({"visibility": "secret"})
 
 
 def test_shared_depts_accepts_dept_list() -> None:

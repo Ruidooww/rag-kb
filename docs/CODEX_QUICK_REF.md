@@ -163,6 +163,21 @@
 
 ---
 
+## 🪪 身份认证（IdP 抽象层）
+
+| 操作 | 方法 |
+|------|------|
+| 获取当前 IdP | `idp = get_idp()` |
+| 换 token | `token = await idp.exchange_code(code)` |
+| 拿用户 | `user = await idp.get_user_info(token)` |
+| 部门映射查询 | `await dept_mapping_repo.get_internal_code(session, provider=..., external_dept_id=...)` |
+| 切换 provider | 改 `.env` 的 `IDP_PROVIDER`，业务代码零改动 |
+
+**业务代码禁止直接 import 任何 IdP SDK** —— 走 `services/auth.py` 抽象。
+四个真实 OAuth provider（feishu/wecom/wechat_open/wechat_mp）当前是 stub，需要时按 #42 子任务实现。
+
+---
+
 ## 🛠 常用命令
 
 ```bash
