@@ -1,9 +1,10 @@
 # RAG 知识库项目 - 任务清单
 
 > **配套文档**：完整任务书 V2.0、数据治理 SOP、系统架构图
-> **总任务数**：54 个（不含已完成的 3 个文档生成任务；+1 来自后期新增 #67 IdP 抽象层）
+> **总任务数**：59 个（不含已完成的 3 个文档生成任务；+5 来自后期新增 #67 IdP / #68 外部隔离 / #69 CRM 抽象 / #70 可观测性 / #71 工具集断言测试 / #72 Prompt Injection 测试集，其中 #71/#72 计入但为 spec-only 状态）
 > **总周期**：13 周（Phase 1-4，Phase 5 可选）
 > **架构**：混合云（数据本地 + LLM 云端）
+> **规则版本**：CLAUDE.md v1.2（十条铁律 + 横切原则 P1-P4）
 > **最后更新**：2026-06-05
 
 ---
@@ -54,7 +55,16 @@
 
 - [x] **#11 antipattern catalog cleanup** (GitHub Issue) — PR #12 / handoff `W2-D0-11`
 - [x] **Q1 锚定 5 字段 ACL schema**（audience / owner_dept / visibility / sensitivity / shared_depts）— PR #13
-- [x] **#67 IdP 抽象层 spec 落地** — commit `75b1744`（spec 文件 `docs/tasks/W2-D1-67-idp-abstraction.md`，等 Codex 启动实现）
+- [x] **#67 IdP 抽象层 spec v1.1** — spec 已升级 `docs/tasks/W2-D1-67-idp-abstraction.md`，新增 User.is_external + LocalIdP 生产防呆，Codex 正在执行（W2-D1-67 分支）
+- [x] **#68 外部隔离 spec v1.0** — `docs/tasks/W2-D1-68-external-isolation.md`，落地铁律 #10 layer 1-3 + 原则 P3，等 #67 完成后启动
+- [x] **#69 CRM 抽象层 spec v1.0** — `docs/tasks/W2-D3-69-crm-abstraction.md`，落地铁律 #9 + 工具集 EXTERNAL/INTERNAL 物理隔离 + sanity check 测试
+- [x] **#70 可观测性 + 审计 spec v1.0** — `docs/tasks/W2-D2-70-observability.md`，落地铁律 #10 layer 4（trace_id middleware + audit_logs + emit_breach_alert）
+- [x] **#71 工具集断言测试 spec v1.0** — `docs/tasks/W2-D4-71-tool-registry-assertion-test.md`，落地原则 P2（独立小任务，与 #69 同 PR 或 follow-up）
+- [x] **#72 Prompt Injection 测试集 spec v1.0** — `docs/tasks/W4-D2-72-prompt-injection-test-suite.md`，对外渠道上线前必做（Phase 2+ 储备）
+- [x] **CLAUDE.md v1.2 升级** — 八条铁律 → 十条铁律（+ #9 CRM 抽象 / #10 工具集物理隔离 + 4 层防御）+ 横切原则 P1-P4（API 脱敏 / 工具集版本化 / 内外路由树分流 / 子 agent 协作）
+- [x] **TASK_PROMPT_TEMPLATE.md v1.2 升级** — 新增「子 agent 协作规范」段（范围 / 计划 / 三关边界 / 并行条件 / 主 agent 集成 / 测试纪律）
+- [x] **CODEX_QUICK_REF.md v1.2 升级** — 速查卡铁律表扩到 10 行 + 新增横切原则表 + 子 agent 调度速查
+- [x] **#37 / #39 spec v1.1 升级** — admin 类 endpoint 强制挂 `internal_router`（落地原则 P3）
 
 ---
 
@@ -545,7 +555,17 @@
 
 ---
 
-_文档版本：v1.0  |  生成时间：2026-06-03  |  共 53 个待办任务_
+_文档版本：v1.2  |  生成时间：2026-06-03  |  最后更新：2026-06-05  |  共 59 个任务（含 spec-only / 升级类）_
+
+### 变更日志
+
+**v1.2 (2026-06-05)**
+- 登记本轮新增 spec：#68 外部隔离 / #69 CRM 抽象 / #70 可观测性 / #71 工具集断言测试 / #72 Prompt Injection 测试集
+- 登记规则升级：CLAUDE.md v1.2（十条铁律 + 原则 P1-P4）/ TASK_PROMPT_TEMPLATE v1.2（子 agent 协作规范）/ CODEX_QUICK_REF v1.2 / ANTIPATTERNS v1.4
+- 登记 #67 spec 升级 v1.1（is_external + 生产防呆）/ #37 #39 spec v1.1（admin endpoint 挂 internal_router）
+- 总任务数 54 → 59
+
+**v1.0 (2026-06-03)**：初始版
 
 ---
 

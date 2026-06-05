@@ -20,6 +20,9 @@
 | G | LangGraph | 占位，待积累 | - |
 | H1 | S3 兼容存储 | env var 不是 S3 标准（产品私有） | 高 |
 | H2 | S3 兼容存储 | 私有 health endpoint 跨产品复用 | 中 |
+| I1 | 子 agent 协作 | sub-agent 自行扩范围 / 跳过集成测试 | 高 |
+| J1 | 路由分流 | admin / CRM / 内部 search endpoint 挂错路由树 | 高 |
+| K1 | 数据脱敏 | Pydantic response 明文返回敏感字段给外部用户 | 高 |
 
 ---
 
@@ -341,6 +344,180 @@ grep -n "/minio/health/live" docker-compose.yml
 
 ---
 
+## I. 子 agent 协作
+
+### I1. sub-agent 自行扩范围 / 跳过集成测试
+
+**来源**：CLAUDE.md 原则 P4（v1.2 新增）
+**严重度**：🔴 高
+
+**问题**：主 agent 把任务派给 sub-agent 后，sub-agent 看到顺手能修的就修了，或多个 sub-agent 并行改同一批文件无协调，或 sub-agent 自报"测试已通过"主 agent 就直接合并 PR。结果：范围漂移导致 review 爆炸；并行冲突在 merge 时才暴露；最终验证从未在集成后的分支上跑过，单 sub-agent 局部通过的测试在集成后失败被忽略。
+
+**❌ 错误范例**：
+
+```text
+主 agent: "派 sub-agent A 改 services/llm.py + sub-agent B 改 services/llm.py"
+                                  ↑ 同文件并行，必冲突
+
+主 agent: "sub-agent 说 pytest 全过，直接 commit"
+                          ↑ sub-agent 跑的是切片测试，未在集成后分支重跑
+
+sub-agent: "顺手把 services/qdrant.py 的 logger 也改了"
+                ↑ 不在派单范围，未记 Handoff §3 偏差
+```
+
+**✅ 正确范例**：
+
+```text
+主 agent 派单格式：
+  - 文件清单：明确列出每个 sub-agent 可碰的文件
+  - 不可触碰清单：声明对方的文件
+  - 计划先行：>1 文件 / 改抽象层 必须先出计划再改代码
+  - 并行条件：文件冲突低 + 边界清晰 才并行
+  - 集成步骤：sub-agent 完成 → 主 agent 集成 → 在集成后分支跑 SELF_REVIEW Part A 完整 8 项
+  - 偏差登记：任何 sub-agent 顺手做的事 → Handoff §3 列出
+```
+
+**Codex 自检方法**：
+
+```bash
+# 1. 派单时检查每个 sub-agent prompt 是否含"文件清单 + 不可触碰清单"
+grep -rE "sub-agent|subagent|派.*执行" docs/handoffs/ -l | xargs grep -L "文件清单\|不可触碰"
+
+# 2. 集成后验证：merge 后必须在集成分支上完整跑过 Part A
+git log --oneline feat/W?-D?-N-xxx | head -10  # 最后一个 commit 必须是 "test: rerun self-review after integration"
+```
+
+Handoff §3 必须显式声明：哪些工作是 sub-agent 派出去做的、是否有偏差、最终 SELF_REVIEW 是否在集成后跑过。
+
+---
+
+## J. 路由分流
+
+### J1. admin / CRM / 内部 search endpoint 挂错路由树
+
+**来源**：CLAUDE.md 原则 P3（v1.1 新增）/ 任务 #37 #39 v1.1 升级
+**严重度**：🔴 高
+
+**问题**：FastAPI 项目里 admin endpoint（用量统计 / 知识缺口 / CRM 查询 / 内部 search）被挂到顶层 `api_router` 或 `public_router`，外部公众号 / 客服渠道走到的 reverse proxy 路径下能直接访问。原则 P3 要求：物理拆 `internal_router` (`/api/v1/internal/`) 和 `public_router` (`/api/v1/public/`) 两棵独立路由树，admin 类只挂 internal。挂错相当于把内部接口暴露给外部，认证中间件也可能因 router 配置不同跳过。
+
+**❌ 错误范例**：
+
+```python
+# app/api/__init__.py
+api_router = APIRouter(prefix="/api/v1")
+api_router.include_router(admin.router)        # ❌ admin 挂顶层
+api_router.include_router(usage.router)        # ❌ usage 挂顶层
+api_router.include_router(public_chat.router)  # ❌ 内外混挂
+```
+
+**✅ 正确范例**：
+
+```python
+# app/api/__init__.py
+internal_router = APIRouter(prefix="/api/v1/internal", dependencies=[Depends(require_internal_user)])
+public_router   = APIRouter(prefix="/api/v1/public",   dependencies=[Depends(require_external_or_internal)])
+api_router      = APIRouter(prefix="/api/v1")  # 仅中性 endpoint
+
+internal_router.include_router(admin.router)
+internal_router.include_router(usage.router)
+internal_router.include_router(crm.router)
+internal_router.include_router(internal_search.router)
+
+public_router.include_router(public_chat.router)
+public_router.include_router(external_search.router)
+
+api_router.include_router(feedback.router)     # 中性
+api_router.include_router(health.router)       # 中性
+
+app.include_router(internal_router)
+app.include_router(public_router)
+app.include_router(api_router)
+```
+
+**Codex 自检方法**：
+
+```bash
+# 1. 检查 admin / usage / crm 类 router 是否只挂在 internal_router
+grep -nE "include_router\(.*(admin|usage|crm|internal_search)" backend/app/api/__init__.py | grep -v "internal_router"
+# 必须无输出
+
+# 2. 跑测试：外部 user 请求 /api/v1/internal/* 必须 403
+pytest backend/tests/test_router_isolation.py -v
+
+# 3. CI gate：fail 时立刻阻断 merge
+```
+
+任务 #37 §4.10-4.11 / #39 §4 给了具体范本。
+
+---
+
+## K. 数据脱敏
+
+### K1. Pydantic response 明文返回敏感字段给外部用户
+
+**来源**：CLAUDE.md 原则 P1（v1.1 新增）
+**严重度**：🔴 高
+
+**问题**：Pydantic response model 直接定义 `phone: str` / `email: str` / `contract_amount: Decimal` 字段，"前端再隐藏"。结果：外部公众号渠道 / 第三方爬虫 / 抓包工具直接拿到 11 位手机号、完整邮箱、合同金额。前端隐藏不是安全边界，必须在 API 层 sanitize。
+
+**❌ 错误范例**：
+
+```python
+class CustomerOut(BaseModel):
+    name: str
+    phone: str            # ❌ 明文返回
+    email: str            # ❌ 明文返回
+    contract_amount: Decimal  # ❌ 明文返回
+
+@router.get("/customers/{id}")
+async def get_customer(id: str, user: User = Depends(get_current_user)):
+    customer = await crm.get_customer(id)
+    return CustomerOut.model_validate(customer)  # ❌ 不分内外用户
+```
+
+**✅ 正确范例**：
+
+```python
+# app/api/utils/sanitize.py
+def mask_phone(p: str) -> str:
+    return p[:3] + "****" + p[-4:] if p and len(p) == 11 else "****"
+
+def mask_email(e: str) -> str:
+    if not e or "@" not in e: return "****"
+    name, domain = e.split("@", 1)
+    return name[:2] + "***@" + domain
+
+def sanitize_customer(payload: dict, user: User) -> dict:
+    if user.is_external:
+        payload["phone"] = mask_phone(payload.get("phone", ""))
+        payload["email"] = mask_email(payload.get("email", ""))
+        payload.pop("contract_amount", None)
+    return payload
+
+@router.get("/customers/{id}")
+async def get_customer(id: str, user: User = Depends(get_current_user)):
+    customer = await crm.get_customer(id)
+    return sanitize_customer(customer.model_dump(), user)
+```
+
+**Codex 自检方法**：
+
+```bash
+# 1. grep 检查 response model 不能直接出现 raw 手机号 / 邮箱 / 金额字段
+grep -nE "phone:\s*str|email:\s*str|amount:\s*(int|float|Decimal)" backend/app/models/ | grep -v "_masked\|sanitized\|internal"
+
+# 2. 集成测试：用外部 user 拉任何 endpoint，断言 JSON 不含 11 位手机号
+pytest backend/tests/test_sanitize.py::test_external_user_no_raw_phone -v
+
+# 3. 断言示例
+assert not re.search(r"\b1[3-9]\d{9}\b", response.text)
+```
+
+任何返回客户 / 员工 / 合同字段的 endpoint，必须经 `sanitize(payload, user)` 后再返回。
+
+---
+
 ## 如何追加新反模式
 
 每次审查（或自审查 Part E3）发现新反模式时：
@@ -383,4 +560,9 @@ grep -n "/minio/health/live" docker-compose.yml
 
 ---
 
-_v1.3 | 反模式 8 条 + G 类占位 | 最后更新：2026-06-05_
+_v1.4 | 反模式 11 条 + G 类占位 | 最后更新：2026-06-05_
+
+变更（v1.4）：
+- 新增 I1 sub-agent 自行扩范围 / 跳过集成测试（来源 原则 P4）
+- 新增 J1 admin / CRM / 内部 search endpoint 挂错路由树（来源 原则 P3）
+- 新增 K1 Pydantic response 明文返回敏感字段给外部用户（来源 原则 P1）
