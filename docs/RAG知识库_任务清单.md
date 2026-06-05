@@ -1,10 +1,10 @@
 # RAG 知识库项目 - 任务清单
 
 > **配套文档**：完整任务书 V2.0、数据治理 SOP、系统架构图
-> **总任务数**：53 个（不含已完成的 3 个文档生成任务）
+> **总任务数**：54 个（不含已完成的 3 个文档生成任务；+1 来自后期新增 #67 IdP 抽象层）
 > **总周期**：13 周（Phase 1-4，Phase 5 可选）
 > **架构**：混合云（数据本地 + LLM 云端）
-> **最后更新**：2026-06-03
+> **最后更新**：2026-06-05
 
 ---
 
@@ -13,13 +13,13 @@
 | 阶段 | 周次 | 任务数 | 状态 |
 |------|------|--------|------|
 | ✅ 文档生成（已完成） | - | 3 | 完成 |
-| Phase 1：基础 RAG + 数据治理 | W1-W4 | 28 | 待启动 |
+| Phase 1：基础 RAG + 数据治理 | W1-W4 | 29 | 🟢 进行中（W1 完成 + W2 部分基建完成）|
 | Phase 2：客户档案 + 权限 | W5-W7 | 3 | 待启动 |
 | Phase 3：客户对比 Agent | W8-W10 | 3 | 待启动 |
 | Phase 4：服务路径 + 自由问答 | W11-W13 | 3 | 待启动 |
 | Phase 5（可选）：移动端 | - | 2 | 待启动 |
 | 贯穿全期 | - | 2 | 持续 |
-| **合计** | **13 周** | **53** | - |
+| **合计** | **13 周** | **54** | - |
 
 ---
 
@@ -28,6 +28,33 @@
 - [x] **#1 生成完整任务书 V2.0** ✅
 - [x] **#2 生成数据治理 SOP** ✅
 - [x] **#3 生成系统架构图文档** ✅
+
+---
+
+## ✅ 已完成（代码主线）
+
+> 跟 main 分支同步。详细 commit 见 `git log`，详细 handoff 见 `docs/handoffs/`。
+
+### Phase 1 Week 1（环境 + 最小 Demo）— 完整完成
+
+- [x] **#15-#17 项目初始化**（git init / 目录结构 / .env.example / docker-compose）
+- [x] **#18 FastAPI 骨架** — PR #2 / handoff `W1-D3-18`
+- [x] **#19 LlamaIndex 抽象层**（铁律 #1 落地）— PR #3 / handoff `W1-D3-19`
+- [x] **#20 最小 RAG Pipeline** — PR #5 / handoff `W1-D4-20`
+- [x] **#21 Ollama 切换演示**（铁律验收）— PR #8 / handoff `W1-D5-21`
+- [x] **#22 Week 1 交付物整理** — PR #7 / handoff `W1-D5-22`
+- [x] **#58 self-review 机制 v2.1** — PR #4 / handoff `W1-D4-58`
+
+### Phase 1 Week 2 D0（技术栈 + Agent 基建）— 完成
+
+- [x] **#65 LangGraph 引入**（铁律 #8 / Agent 编排基建）— PR #9 / handoff `W2-D0-65`
+- [x] **#63 RustFS 切换**（MinIO → RustFS，存储抽象）— PR #10 / handoff `W2-D0-63`
+
+### 清单外补丁（PR review backlog / 架构讨论产出）
+
+- [x] **#11 antipattern catalog cleanup** (GitHub Issue) — PR #12 / handoff `W2-D0-11`
+- [x] **Q1 锚定 5 字段 ACL schema**（audience / owner_dept / visibility / sensitivity / shared_depts）— PR #13
+- [x] **#67 IdP 抽象层 spec 落地** — commit `75b1744`（spec 文件 `docs/tasks/W2-D1-67-idp-abstraction.md`，等 Codex 启动实现）
 
 ---
 
@@ -59,7 +86,7 @@
 
 ### Week 1：环境搭建 + 迁移友好基础
 
-- [ ] **#9 Week 1 里程碑**
+- [x] **#9 Week 1 里程碑** ✅
   - 注册百炼、Docker 起服务、bge-m3 本地部署、FastAPI 骨架、最小 RAG Pipeline 跑通、环境变量切换演示
 
 #### Day 1（周一）
@@ -79,14 +106,14 @@
   5. 安装 VSCode/Cursor + Python/Pylance/Docker 插件
   6. 安装 Ollama（用于每周迁移路径验证）
 
-- [ ] **#15 初始化 Git 仓库与项目结构**（1 小时）
+- [x] **#15 初始化 Git 仓库与项目结构**（1 小时）✅
   - 创建项目目录 `rag-kb/`，初始化 git 仓库
   - 目录结构：`backend/`、`web/`、`docker/`、`scripts/`、`prompts/`、`docs/`、`config/`、`tests/`
   - 基础文件：`.env.example`、`.gitignore`、`README.md`、`docker-compose.yml`
 
 #### Day 2（周二）
 
-- [ ] **#16 编写 docker-compose.yml 启动本地服务**
+- [x] **#16 编写 docker-compose.yml 启动本地服务** ✅
   1. Qdrant (`qdrant/qdrant`)
   2. PostgreSQL 16
   3. MinIO（或本地 FS 简化）
@@ -94,7 +121,7 @@
   5. 验证所有服务 health check 通过
   6. 持久化卷映射到 `./data/`
 
-- [ ] **#17 编写 .env.example 与 config.yaml**（按七条迁移铁律）
+- [x] **#17 编写 .env.example 与 config.yaml**（按七条迁移铁律）✅
   1. `LLM_PROVIDER` / `LLM_BASE_URL` / `LLM_MODEL` / `LLM_API_KEY`
   2. `RERANK_BASE_URL` / `RERANK_MODEL`
   3. `EMBED_BASE_URL` / `EMBED_MODEL`
@@ -104,7 +131,7 @@
 
 #### Day 3（周三）
 
-- [ ] **#18 搭建 FastAPI 项目骨架**
+- [x] **#18 搭建 FastAPI 项目骨架** ✅ PR #2
   1. 创建 `backend/` Poetry 或 uv 项目
   2. 安装核心依赖：`fastapi`、`uvicorn`、`llama-index`、`pydantic`、`psycopg`、`qdrant-client`、`httpx`
   3. 项目分层：`app/api/`、`app/agents/`、`app/services/`、`app/models/`、`app/core/`
@@ -112,7 +139,7 @@
   5. 配置加载（`pydantic-settings` 读 `.env`）
   6. 启动 `uvicorn main:app --reload` 验证
 
-- [ ] **#19 LlamaIndex 抽象层封装（迁移铁律 #1）** 🔒 关键
+- [x] **#19 LlamaIndex 抽象层封装（迁移铁律 #1）** 🔒 ✅ PR #3
   1. 用 LlamaIndex `OpenAILike` 封装 LLM（百炼兼容 OpenAI 接口）
   2. 用 `OpenAIEmbedding` 封装本地 bge-m3
   3. 用 Rerank 封装 `gte-rerank-v2`
@@ -122,7 +149,7 @@
 
 #### Day 4（周四）
 
-- [ ] **#20 最小 RAG Pipeline 跑通（5 份测试文档）**
+- [x] **#20 最小 RAG Pipeline 跑通（5 份测试文档）** ✅ PR #5
   1. 准备 5 份测试文档（含 1 份带图 PDF）
   2. 写 ingest 脚本：解析 → 切片 → bge-m3 向量化 → 入 Qdrant
   3. 写 query API：query → Embedding → Qdrant Top-30 → Rerank → Omni 生成
@@ -131,14 +158,14 @@
 
 #### Day 5（周五）
 
-- [ ] **#21 环境变量切换演示（迁移铁律验收）** 🔒 验收点
+- [x] **#21 环境变量切换演示（迁移铁律验收）** 🔒 ✅ PR #8
   1. 本地 Ollama 拉取 `qwen2.5:7b` 模型
   2. 复制 `.env` 为 `.env.local`，改 `LLM_BASE_URL` 指向 ollama
   3. **不改任何业务代码**，重启服务
   4. 验证 `/query` 接口仍能返回答案（质量可能下降但流程通）
   5. 记录切换步骤到 `docs/migration-test.md`
 
-- [ ] **#22 Week 1 交付物整理**
+- [x] **#22 Week 1 交付物整理** ✅ PR #7
   1. `README.md` 写完整：项目概述、目录结构、启动步骤、环境变量说明
   2. `docs/architecture.md` 简述当前架构
   3. 录一个 5 分钟 Demo 视频（上传文档+提问）
@@ -150,18 +177,31 @@
 ### Week 2（关键周）：数据治理 + 700 份文档入库
 
 > ⚠️ **本周是整个项目最关键的一周。元数据准确性决定所有后续 Agent 的输出质量。**
+>
+> **实际文档数已调整为 400 份**（原计划 700）。任务 #26 / #30 涉及的工作量按 400 估。
 
 - [ ] **#10 Week 2 里程碑** *blocked by #9*
   - 命名规范、元数据 Schema、客户主数据、Omni 自动抽取 + 业务方审核、双轨入库、异步处理
 
+#### Day 0（前置基建，与主线 D1 并行）
+
+- [x] **#65 LangGraph Agent 编排引入** ✅ PR #9
+- [x] **#63 对象存储 MinIO → RustFS 切换** ✅ PR #10
+- [x] **Q1 锚定 5 字段 ACL schema**（为 #24/#25/#28/#42 共享锚点）✅ PR #13
+
 #### Day 1（周一）
 
-- [ ] **#23 制定文件命名规范与文档类型枚举**
-  1. 定义 `[客户简称]_[文档类型]_[YYYYMMDD]_[版本]` 格式
-  2. 完成 18 类文档类型枚举（售前/签约/实施/培训/维保/续约/复盘/产品）
-  3. 写成 `docs/naming-convention.md`
-  4. 业务方代表会议确认
-  5. 输出文件命名检查脚本 `scripts/check_naming.py`
+- [ ] **#67 IdP 抽象层 + dept_mapping + LocalIdP**（新增任务）🟡 spec 已就绪
+  - spec：`docs/tasks/W2-D1-67-idp-abstraction.md`（700 行，12 章）
+  - 范围：IdentityProvider ABC + LocalIdP 完整实现 + 4 stub provider（feishu/wecom/wechat_open/wechat_mp）
+  - 顺带：alembic 初始化（#24 直接受益）+ dept_mapping 表 + User Pydantic schema
+  - **状态**：spec 已 push 到 main（commit `75b1744`），等 Codex 启动实现
+
+- [ ] **#23 制定文件命名规范与文档类型枚举** ⚠️ 已重新评估范围
+  1. ~~定义 `[客户简称]_[文档类型]_[YYYYMMDD]_[版本]` 格式~~ — 原方案假设"客户档案"，实际是"产品技术资料库"，customer 字段不适用，命名规范方向需要重做
+  2. ~~完成 18 类文档类型枚举（售前/签约/实施/培训/维保/续约/复盘/产品）~~ — 等 400 份文档下载完后 audit 反推真实文档类型
+  3. **替代路径**：下载 400 份后跑 `raw_docs_audit` → 反推 doc_type 枚举 → 锚定到 spec
+  4. 命名规范文档本身（`docs/naming-convention.md` + `scripts/check_naming.py` + 业务方会议）推迟到 Phase 2
 
 - [ ] **#24 建立客户主数据表与别名表**
   1. 设计 4 张 PG 表：`customer` / `customer_alias` / `customer_product` / `document_meta`
