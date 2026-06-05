@@ -12,7 +12,7 @@
 
 总评：NEEDS_REVIEW。
 
-本任务已把底层对象存储从 MinIO 切换到 RustFS，并新增 `backend/app/services/storage.py` 作为唯一 S3 兼容存储抽象入口。Docker 4 个服务已全部 healthy；RustFS integration 测试 `5 passed`；非 integration 回归 `15 passed, 16 deselected`；coverage `67%`，高于当前 CI 60% 门槛。
+本任务已把底层对象存储从 MinIO 切换到 RustFS，并新增 `backend/app/services/storage.py` 作为唯一 S3 兼容存储抽象入口。Docker 4 个服务已全部 healthy；RustFS storage 测试 `12 passed`；非 integration 回归 `23 passed, 15 deselected`；coverage `70%`，高于当前 CI 60% 门槛。
 
 需要审查者关注的触发项：D4 修改超过 5 个已有文件，D5 新增 `boto3`/`botocore`，D6 修改 `backend/app/core/config.py` 核心配置层。风险评估：中低，改动集中在存储底座和配置字段迁移，没有实现 Agent，也没有让业务代码直接依赖 boto3。
 
@@ -57,7 +57,7 @@ RustFS healthcheck 与 spec 有明确偏离：实测 `/minio/health/live` 返回
 - 原因：实测 `/minio/health/live` 返回 `403 AccessDenied`，该端点是 MinIO 私有 health 端点；RustFS 不提供 MinIO 风格的私有 health endpoint。
 - 处理：按审查者授权，将 `docker-compose.yml:57-64` 改为 S3 根路径探活：`curl -s -o /dev/null -w '%{http_code}' http://localhost:9000/ | grep -qE '^(200|403)$'`。
 - 影响：仅影响 Docker healthcheck；业务代码通过 S3 API 正常访问，不受影响。
-- 后续：跟踪 RustFS 官方 release notes，如未来暴露 `/health` 或 `/ready`，再切回 `curl -f` 标准探活。
+- 后续：跟踪 RustFS 官方 health 端点 release notes；未来如 RustFS 官方暴露 `/health` 或 `/ready`，切回 `curl -f` 标准探活。
 - Commit：`e435b97`
 
 偏差 2：同步修改 `.github/workflows/self-review.yml`。
@@ -89,9 +89,9 @@ RustFS healthcheck 与 spec 有明确偏离：实测 `/minio/health/live` 返回
 | Infinity health | 通过 | `curl http://localhost:8080/health` 返回 `200 OK` |
 | Postgres readiness | 通过 | `pg_isready -U rag` 返回 `accepting connections` |
 | `uv sync` | 通过 | `Resolved 125 packages`, `Checked 123 packages` |
-| storage integration | 通过 | `5 passed, 1 warning in 18.79s` |
-| 非 integration 回归 | 通过 | `15 passed, 16 deselected, 2 warnings in 19.61s` |
-| coverage | 通过 | `TOTAL 412 statements, 67%` |
+| storage tests | 通过 | `12 passed, 1 warning in 18.97s` |
+| 非 integration 回归 | 通过 | `23 passed, 15 deselected, 2 warnings in 25.94s` |
+| coverage | 通过 | `TOTAL 426 statements, 70%` |
 | `ruff check` | 通过 | `All checks passed!` |
 | `ruff format --check` | 通过 | `33 files already formatted` |
 | `mypy app` | 通过 | `Success: no issues found in 20 source files` |
@@ -116,14 +116,15 @@ tests/services/test_storage.py::test_save_and_load_roundtrip PASSED
 tests/services/test_storage.py::test_exists_for_missing_key_returns_false PASSED
 tests/services/test_storage.py::test_delete_removes_file PASSED
 tests/services/test_storage.py::test_get_presigned_url_returns_http_url PASSED
-tests/services/test_storage.py::test_storage_error_on_invalid_endpoint PASSED
-5 passed
+tests/services/test_storage.py::test_get_storage_returns_app_state_storage PASSED
+tests/services/test_storage.py::test_get_storage_requires_initialized_state PASSED
+12 passed
 ```
 
 ```text
 uv run pytest -v -m "not integration" --cov=app --cov-report=term-missing --cov-report=xml
-15 passed, 16 deselected
-TOTAL 412 138 67%
+23 passed, 15 deselected
+TOTAL 426 128 70%
 ```
 
 ---
@@ -141,7 +142,7 @@ TOTAL 412 138 67%
 
 - `docker-compose.yml:48-49` 使用本地默认凭据 `rustfsadmin` / `rustfsadmin-please-change-me`，只适合本地开发；Phase 2 前应替换为安全凭据。
 - `backend/app/main.py:31` 仍有历史硬编码 CORS origin `http://localhost:3000`，不是本轮新增。
-- `backend/app/services/storage.py:60-70` 在构造 `S3CompatibleStorage` 时会同步执行 `_ensure_bucket()`；当前用于最小实现和测试可接受，后续高并发场景可考虑延迟初始化或生命周期管理。
+- `backend/app/main.py:15-22` 在 FastAPI lifespan 中创建 `S3CompatibleStorage` 并执行 `await storage.ensure_ready()`；应用启动会依赖 RustFS 可达，换环境时需先启动对象存储。
 - `docs/RAG知识库_任务清单.md` 和旧 task spec 仍包含 `MINIO_` 历史文本，属于 archive/history，不是运行时配置。
 
 ---
@@ -158,13 +159,13 @@ TOTAL 412 138 67%
 
 ## 7. 给下一轮的提示
 
-- RustFS 已部署，本地 Web Console/API 端口为 `http://localhost:9001` / `http://localhost:9000`；当前匿名访问返回 `403 AccessDenied` 是正常 S3 行为。
-- 存储抽象入口是 `backend/app/services/storage.py:166` 的 `get_storage()`；业务层不要直接 new boto3 client。
+- RustFS 已部署，本地 Web Console/API 入口为 `http://localhost:9001/rustfs/console/access-keys` / `http://localhost:9000`；S3 根路径匿名访问返回 `403 AccessDenied` 是正常 S3 行为。
+- 存储抽象入口是 `backend/app/services/storage.py` 的 `get_storage(request)`；业务层不要直接 new boto3 client，也不要绕过 `app.state.storage`。
 - bucket 名从 `settings.storage_bucket` 读取，默认 `rag-documents`，字段定义在 `backend/app/core/config.py:29-34`。
-- 预签名 URL 已可通过 `await get_storage().get_presigned_download_url(doc_id)` 生成，测试见 `backend/tests/services/test_storage.py:44-54`。
-- Phase 2 的 #28 双轨入库可以把原文档 bytes 写入 `get_storage().save(doc_id, content, content_type=...)`，返回 `s3://rag-documents/documents/{doc_id}`。
+- 预签名 URL 已可通过 `await storage.get_presigned_download_url(doc_id)` 生成，测试见 `backend/tests/services/test_storage.py`。
+- Phase 2 的 #28 双轨入库可以通过 `storage = get_storage(request)` 取得实例，再把原文档 bytes 写入 `storage.save(doc_id, content, content_type=...)`，返回 `s3://rag-documents/documents/{doc_id}`。
 - 默认凭据 `rustfsadmin-please-change-me` 只用于本地开发；进入 Phase 2 前应按 #61 backlog 换成非默认 secret。
-- 后续如果 RustFS 官方提供 `/health` 或 `/ready`，把 `docker-compose.yml:57-64` 改回 `curl -f` 风格的标准 healthcheck。
+- 后续跟踪 RustFS 官方 health 端点 release notes；如果官方提供 `/health` 或 `/ready`，把 `docker-compose.yml:57-64` 改回 `curl -f` 风格的标准 healthcheck。
 
 ---
 
@@ -174,13 +175,13 @@ TOTAL 412 138 67%
 
 | 项 | 结果 | 证据 |
 |----|------|------|
-| A1 pytest | 通过 | `15 passed, 16 deselected`; storage integration `5 passed` |
-| A1 coverage | 通过 | `TOTAL 412 statements, 67%`, 高于 CI 60% |
+| A1 pytest | 通过 | `23 passed, 15 deselected`; storage tests `12 passed` |
+| A1 coverage | 通过 | `TOTAL 426 statements, 70%`, 高于 CI 60% |
 | A2 ruff/mypy | 通过 | `ruff check`: All checks passed; `ruff format --check`: 33 files already formatted; `mypy`: no issues |
 | A3 七条铁律 + 敏感词 grep | 通过 | `print(`、`import logging`、`from openai/import dashscope` 无输出；`import boto3` 仅 `backend/app/services/storage.py:8` |
 | A4 spec §4 文件 | NEEDS_REVIEW | spec 要求文件已完成；额外同步 CI workflow、docx-build 脚本和 task spec，见 §3 |
 | A5 依赖安全 | 通过 | `uv pip check` 通过；`boto3`/`botocore` license `Apache-2.0` |
-| A6 commit message | 通过 | `feat: switch object storage to RustFS` + `Refs: #63` |
+| A6 commit message | 通过 | `feat: switch object storage to RustFS`、`fix: address RustFS review feedback`、本 Handoff 更新 commit 均含 `Refs: #63` |
 | A7 Handoff 完整性 | 通过 | 本文件包含 §0-§8 和 `last_verified_commit` |
 | A8 CI 复现 | 通过 | `self-review pass`, https://github.com/Ruidooww/rag-kb/actions/runs/26989916306/job/79647672394 |
 
@@ -225,7 +226,7 @@ backend/app/services/storage.py:140 head_object
 backend/app/services/storage.py:155 generate_presigned_url
 ```
 
-`boto3` 同步调用均通过 `anyio.to_thread.run_sync` 包装；没有新增 `@lru_cache` 缓存有副作用的 client。当前 `S3CompatibleStorage.__init__` 会做 bucket 检查/创建，后续可改成应用生命周期初始化。
+`boto3` 同步调用均通过 `anyio.to_thread.run_sync` 包装；没有新增 `@lru_cache` 缓存有副作用的 client。`S3CompatibleStorage.__init__` 只创建 client，不做网络 IO；bucket 检查/创建已移动到 `ensure_ready()`，并由 FastAPI lifespan 持有单例。
 
 **B5 可测性**：
 
@@ -238,10 +239,11 @@ S3CompatibleStorage.exists -> tests/services/test_storage.py:test_exists_for_mis
 S3CompatibleStorage.delete -> tests/services/test_storage.py:test_delete_removes_file
 S3CompatibleStorage.get_presigned_download_url -> tests/services/test_storage.py:test_get_presigned_url_returns_http_url
 S3CompatibleStorage invalid endpoint -> tests/services/test_storage.py:test_storage_error_on_invalid_endpoint
-get_storage -> tests/services/test_storage.py uses it in 4 integration tests
+S3CompatibleStorage invalid doc_id -> tests/services/test_storage.py:test_invalid_doc_id_rejected
+get_storage -> tests/services/test_storage.py:test_get_storage_returns_app_state_storage, test_get_storage_requires_initialized_state
 ```
 
-这些测试被标为 `pytestmark = pytest.mark.integration`，不会在无 RustFS 的 CI 非 integration 步骤误跑。
+真实 RustFS 读写测试单独标记为 `@pytest.mark.integration`；invalid endpoint、invalid doc_id 和 `get_storage(request)` 测试均为非 integration 单元测试，会在 CI 中运行。
 
 **B6 配置合规**：
 
@@ -256,7 +258,7 @@ get_storage -> tests/services/test_storage.py uses it in 4 integration tests
 **B8 下一轮暗坑**：
 
 - `docker-compose.yml:57-64` 的 healthcheck 接受 `403` 是刻意设计；不要误改回 `/minio/health/live`。
-- `backend/app/services/storage.py:60-70` 初始化时会访问 RustFS 并确保 bucket；如果下一轮在 request hot path 高频创建 storage，应考虑生命周期持有或轻量工厂。
+- `backend/app/main.py:15-22` 会在应用启动时初始化 storage 并确保 bucket；如果下一轮新增 API，请通过 FastAPI dependency 注入的 `get_storage(request)` 使用 `app.state.storage`，不要在 request hot path 反复 new client。
 - `backend/app/services/storage.py:83-87` 会把所有 doc id 放到 `documents/` 前缀下；#28 双轨入库如果已有路径前缀，需避免重复拼接。
 
 ### Part C 陷阱核查（18 项）
@@ -295,14 +297,14 @@ ANTIPATTERNS 对照结果：
 - D7 公共 API 删改：否。
 - D8 Part A 失败：否；A8 待最终 CI 确认。
 - D9 Part C 失败：无新增失败；历史 C3 已标注 NEEDS_REVIEW。
-- D10 覆盖率下降：当前 67%，高于 60% CI 门槛；未做 main baseline 对比。
+- D10 覆盖率下降：当前 70%，高于 60% CI 门槛；未做 main baseline 对比。
 - D11 偏差数：3 条，达到但未超过 3。
 
 ### Part E 自我反思
 
 **E1 三个改进点**：
 
-1. 当前 `S3CompatibleStorage.__init__` 在 `backend/app/services/storage.py:60-70` 里创建 client 并立即 `_ensure_bucket()`。如果重做，会考虑把 bucket 初始化放到应用启动或显式 `ensure_ready()`，减少 request hot path 构造副作用。本轮没改是因为 spec 明确要求 `_ensure_bucket` 幂等创建，且当前还没有业务 API 高频调用 storage。
+1. 当前 `backend/app/main.py:15-22` 在 FastAPI lifespan 中初始化 storage 并确保 bucket。重做时会进一步把启动失败日志补充为面向运维的错误提示，并在 Docker `depends_on` 接入 backend 时明确 RustFS 依赖。本轮没继续扩展，是因为当前任务只要求底层存储迁移，backend Docker 服务仍处于注释状态。
 2. 当前 healthcheck 在 `docker-compose.yml:57-64` 用 `403` 判活。更理想方式是 RustFS 官方提供标准 `/health` 或 `/ready` 后改回 `curl -f`。本轮没改是因为实测 RustFS 当前镜像对 MinIO 私有 endpoint 返回 `403`，审查者已授权 S3 根路径探活。
 3. 当前 integration tests 在 `backend/tests/services/test_storage.py:14-61` 每个测试都重新 `get_storage()` 并触发 bucket 检查。重做时可以加 fixture 复用 storage 实例并统一清理测试对象。本轮保持简单，是为了减少测试共享状态和隐藏顺序依赖。
 
@@ -315,12 +317,13 @@ ANTIPATTERNS 对照结果：
 - 候选反模式：把 S3 API 兼容误认为 MinIO 私有管理/健康端点兼容。
 - 错误范例：`curl -f http://localhost:9000/minio/health/live` 用于非 MinIO S3-compatible 服务。
 - 正确范例：优先使用该服务官方 health endpoint；没有官方 endpoint 时，用明确授权的 API 可达性探活并在 Handoff 说明。
-- 本轮未追加 `docs/ANTIPATTERNS.md`，因为该规则目前只在 RustFS healthcheck 场景出现，建议审查者确认后作为 `A2` 或 `F2` 追加。
+- 本轮已追加 `docs/ANTIPATTERNS.md` 的 G1/G2：G1 记录 S3-compatible 服务的凭据/bootstrap 配置不能跨产品或跨版本猜测；G2 记录 MinIO 私有 health endpoint 不能直接复用到 RustFS。
 
 ### 修复轨迹
 
 - fix_attempt:1 (working tree before commit) - RustFS `/minio/health/live` 返回 `403 AccessDenied`，按审查者授权改为 S3 根路径 `200/403` 探活，重跑 Docker 后 4 services healthy。
 - fix_attempt:2 (working tree before commit) - 本地 `.env` 曾被 PowerShell 反引号污染，修复本地 `.env` 换行后 storage integration 从 4 failed 变为 5 passed；`.env` 未提交。
+- PR #10 review fix_attempt:1 (commit 4ea4be4) - 修复 B1-B4/N1-N3：RustFS 改用当前镜像支持的 CLI 凭据参数并重建容器；`S3CompatibleStorage.__init__` 移除网络 IO，新增 `ensure_ready()` 和 FastAPI lifespan 单例；invalid endpoint 改为非 integration 单元测试；`doc_id` 增加 allowlist 防 path traversal；追加 `storage_public_endpoint`、Quick Ref 和 ANTIPATTERNS G1/G2。重跑：`ruff check` ✅、`ruff format --check` ✅、`mypy app` ✅、`pytest tests/services/test_storage.py -v` 为 `12 passed`、`pytest -v -m "not integration" --cov=app` 为 `23 passed, 15 deselected`, coverage `70%`、Docker 4 services healthy。
 
 ### 总评
 
@@ -328,4 +331,4 @@ NEEDS_REVIEW
 
 原因：本地功能和质量门禁通过，但 Part D 触发 D4/D5/D6，且 healthcheck 有审查者授权的 spec 偏离。建议审查者重点看 §3、§5、§6。
 
-last_verified_commit: e435b97
+last_verified_commit: 4ea4be4
