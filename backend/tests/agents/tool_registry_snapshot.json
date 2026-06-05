@@ -1,0 +1,15 @@
+{
+  "_comment": "Reviewed tool registry snapshot. Any tool change must update this file and explain the reason in the PR.",
+  "_updated": "2026-06-05",
+  "external_tools": [
+    "search_external_docs"
+  ],
+  "internal_tools": [
+    "find_customer_by_name",
+    "get_customer_basic",
+    "get_service_history",
+    "list_contacts",
+    "list_contracts",
+    "search_docs"
+  ]
+}

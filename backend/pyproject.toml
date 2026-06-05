@@ -59,4 +59,5 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 markers = [
     "integration: tests requiring real external services (LLM/Rerank/Embedding)",
+    "tool_registry: tool registry assertion tests for principle P2",
 ]
