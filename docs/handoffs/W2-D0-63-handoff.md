@@ -182,7 +182,7 @@ TOTAL 412 138 67%
 | A5 依赖安全 | 通过 | `uv pip check` 通过；`boto3`/`botocore` license `Apache-2.0` |
 | A6 commit message | 通过 | `feat: switch object storage to RustFS` + `Refs: #63` |
 | A7 Handoff 完整性 | 通过 | 本文件包含 §0-§8 和 `last_verified_commit` |
-| A8 CI 复现 | 待最终确认 | Handoff commit 推送后以 `gh pr checks 10` 为准 |
+| A8 CI 复现 | 通过 | `self-review pass`, https://github.com/Ruidooww/rag-kb/actions/runs/26989916306/job/79647672394 |
 
 ### Part B 软指标
 
