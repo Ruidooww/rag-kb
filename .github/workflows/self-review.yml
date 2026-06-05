@@ -64,10 +64,12 @@ jobs:
           EMBED_MODEL: BAAI/bge-m3
           POSTGRES_URL: postgresql+asyncpg://rag:ragpass@localhost:5432/rag
           QDRANT_URL: http://localhost:6333
-          MINIO_ENDPOINT: localhost:9000
-          MINIO_ACCESS_KEY: minioadmin
-          MINIO_SECRET_KEY: minioadmin
-          MINIO_BUCKET: rag-documents
+          STORAGE_BACKEND: rustfs
+          STORAGE_ENDPOINT: http://localhost:9000
+          STORAGE_ACCESS_KEY: rustfsadmin
+          STORAGE_SECRET_KEY: rustfsadmin-please-change-me
+          STORAGE_BUCKET: rag-documents
+          STORAGE_REGION: us-east-1
         run: |
           uv run pytest -v -m "not integration" --cov=app --cov-report=term-missing --cov-report=xml
         continue-on-error: false

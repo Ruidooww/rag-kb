@@ -119,6 +119,20 @@
 
 ---
 
+## 💾 对象存储（RustFS）
+
+| 操作 | 方法 |
+|------|------|
+| 保存文件 | `await get_storage().save(doc_id, bytes)` |
+| 读文件 | `await get_storage().load(doc_id) -> bytes` |
+| 预签名下载 URL | `await get_storage().get_presigned_download_url(doc_id, expires_in=3600)` |
+| 删除 | `await get_storage().delete(doc_id)` |
+| Web Console | http://localhost:9001（用户名 rustfsadmin）|
+
+**业务代码禁止直接 import boto3** —— 走 `services/storage.py` 抽象。
+
+---
+
 ## 🛠 常用命令
 
 ```bash
