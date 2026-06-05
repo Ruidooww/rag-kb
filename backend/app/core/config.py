@@ -1,5 +1,6 @@
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic import SecretStr
 from pydantic_settings import (
@@ -23,7 +24,8 @@ class Settings(BaseSettings):
     rerank_model: str
     embed_base_url: str
     embed_model: str
-    postgres_url: str
+    postgres_url: SecretStr
+    postgres_url_sync: SecretStr | None = None
     qdrant_url: str
     qdrant_collection: str = "rag_chunks"
     storage_backend: str = "rustfs"
@@ -33,7 +35,10 @@ class Settings(BaseSettings):
     storage_bucket: str
     storage_region: str = "us-east-1"
     storage_public_endpoint: str | None = None
-    app_env: str = "development"
+    app_env: Literal["dev", "development", "staging", "production"] = "dev"
+    allow_local_idp_in_prod: bool = False
+    idp_provider: Literal["local", "feishu", "wecom", "wechat_open", "wechat_mp"] = "local"
+    local_users: str = "[]"
     app_port: int = 8000
     app_log_level: str = "INFO"
 
