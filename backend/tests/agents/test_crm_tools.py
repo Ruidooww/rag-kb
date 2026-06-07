@@ -82,3 +82,55 @@ async def test_external_user_is_rejected_before_crm_call(monkeypatch: pytest.Mon
         )
 
     assert called is False
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("tool_name", "tool_input"),
+    [
+        ("get_customer_basic", {"customer_id": "cust-001"}),
+        ("list_contracts", {"customer_id": "cust-001"}),
+        ("list_contacts", {"customer_id": "cust-001"}),
+        ("get_service_history", {"customer_id": "cust-001"}),
+        ("find_customer_by_name", {"name_query": "示例"}),
+    ],
+)
+async def test_external_user_error_message_no_tool_leak(
+    monkeypatch: pytest.MonkeyPatch,
+    tool_name: str,
+    tool_input: dict[str, object],
+) -> None:
+    """PR #15 N1 / PR #14 N1: 错误信息绝不可回显工具名或内部识别符（防枚举攻击）.
+
+    所有 5 个内部 CRM 工具对外部用户必须返回**精确等值**的 "Permission denied"，
+    任何 tool_name / customer_id / 工具内部细节出现在 raise message 都视为回归。
+    """
+    monkeypatch.setattr(crm_tools, "get_crm", lambda: FakeCRM())
+    tool = getattr(crm_tools, tool_name)
+    payload = {**tool_input, "user": _external_user()}
+
+    with pytest.raises(PermissionDeniedError) as exc_info:
+        await tool.ainvoke(payload)
+
+    message = str(exc_info.value)
+    # 精确等值：不允许任何前缀 / 后缀 / 调试信息
+    assert message == "Permission denied", (
+        f"Tool {tool_name} 错误信息泄漏内部细节：{message!r}。"
+        f"必须精确等于 'Permission denied'，不允许回显工具名 / customer_id。"
+    )
+    # 兜底反向断言：不允许出现任何工具名
+    forbidden_substrings = (
+        "get_customer",
+        "list_contract",
+        "list_contact",
+        "get_service",
+        "find_customer",
+        "search_docs",
+        "customer_id",
+        "cust-001",
+        "示例",
+    )
+    for forbidden in forbidden_substrings:
+        assert forbidden not in message, (
+            f"Tool {tool_name} 错误信息含禁止子串 {forbidden!r}：{message!r}"
+        )

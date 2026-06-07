@@ -76,6 +76,30 @@
 - 业务方只声明 event_type + target，剩下基础设施自动填
 - 落库失败不影响主流程（try/except + log warning）
 - 用 `asyncio.create_task` 异步落库
+- **必须同时支持 sync + async 函数**（PR #15 N5 警告）：用 `inspect.iscoroutinefunction(fn)` 在装饰器内部分发；
+  当前 #69 的 no-op `audit.py` 只有 async wrapper（仅适配 CRM async 工具），#70 真实实现切回去时如果只支持 async，
+  会导致未来同步审计入口（如 `audit_breach_alert()` 同步通知 / sync admin endpoint / startup-time check）无法装饰。
+  实现参考：
+  ```python
+  def audit(*, event_type, severity=AuditSeverity.INFO, target=None, action=None):
+      def decorator(fn):
+          if inspect.iscoroutinefunction(fn):
+              @functools.wraps(fn)
+              async def async_wrapper(*args, **kwargs):
+                  result = await fn(*args, **kwargs)
+                  asyncio.create_task(_persist_audit(...))
+                  return result
+              return async_wrapper
+          else:
+              @functools.wraps(fn)
+              def sync_wrapper(*args, **kwargs):
+                  result = fn(*args, **kwargs)
+                  # sync 路径用 BackgroundTasks / thread pool 落库，不能用 create_task
+                  _enqueue_sync_audit(...)
+                  return result
+              return sync_wrapper
+      return decorator
+  ```
 
 ### 3.5 外部越权告警（铁律 #10 层 4 落地）
 - `services/qdrant.PermissionError` 抛出处：同步插一条 `audit_logs` event_type=`external_breach_alert`, severity=`critical`

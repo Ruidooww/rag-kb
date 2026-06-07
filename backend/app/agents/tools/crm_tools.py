@@ -18,12 +18,14 @@ from app.services.crm import get_crm
 
 def _check_internal(user: User, tool_name: str) -> None:
     if user.is_external:
+        # 详细信息只走 audit log，不进 raise message（防枚举攻击 — PR #14 N1 / PR #15 N1）
         logger.warning(
             "External user {} attempted to call internal CRM tool {}",
             user.user_id,
             tool_name,
         )
-        raise PermissionDeniedError(f"External user cannot call {tool_name}")
+        # 对外统一错误：不回显 tool_name / customer_id / 任何内部识别符
+        raise PermissionDeniedError("Permission denied")
 
 
 @tool
