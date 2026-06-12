@@ -126,7 +126,7 @@ Task 0 五字段最终契约：
 | 铁律 / 敏感词 grep | 通过 | dashscope/openai/model URL/os env/print/logging/silent except/type ignore/secret logging 均无违规命中 |
 | Pydantic 锚点 | 通过 | `git diff main -- backend/app/models/document_meta.py` 无输出 |
 | 当前 PG ACL 状态 | 通过 | 空表；owner_dept nullable；sensitivity integer；shared_depts ARRAY；3 个命名 check 存在 |
-| CI 首次运行 | 待 Handoff 推送后复现 | run `27431635538` 仅 A7 因缺少本文件失败 |
+| CI workflow | 通过 | 首次 run `27431635538` 仅 A7 因缺少本文件失败；Handoff 推送后 run `27432153991` 通过 |
 
 ### 关键命令原始输出摘要
 
@@ -243,7 +243,7 @@ Success: no issues found in 48 source files
 | A5 依赖安全 | 需人工确认 | pip check 通过；Jinja2/PyPDF/pdf2image 为允许 license；Pillow 为 MIT-CMU |
 | A6 commit message | 通过 | 实现 commit `feat: add #25 product KB metadata extraction`，body 含 `Refs: #25`；预存 dispatch commit 见 §3 |
 | A7 Handoff 完整性 | 通过 | 本文件含 §0-§8、§3 偏差、§6/§7 提示、Part A-E |
-| A8 CI 复现 | 待本文件推送后复现 | 首次 run `27431635538` 仅因 A7 缺本文件失败 |
+| A8 CI 复现 | 通过 | 首次 run `27431635538` 仅因 A7 缺本文件失败；run `27432153991` 全绿 |
 
 ### Part B 软指标
 
@@ -331,7 +331,7 @@ Success: no issues found in 48 source files
 ### 修复轨迹
 
 - fix_attempt:0：Task 0 和主体均按 TDD 先观察失败，再实现至目标、全量、迁移和静态检查全部通过；无完成后修复轮次。
-- CI 首次 run `27431635538`：仅 A7 因 Handoff 尚未创建失败；本文件推送后重新复现。
+- CI 首次 run `27431635538`：仅 A7 因 Handoff 尚未创建失败；推送本文件后 run `27432153991` 通过。
 
 ### 总评
 
