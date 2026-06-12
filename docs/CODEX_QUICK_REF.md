@@ -196,6 +196,22 @@
 
 ---
 
+## 🧾 客户主数据
+
+| 表 | 用途 |
+|---|---|
+| `customer` / `customer_alias` | 本地客户主记录与模糊匹配别名 |
+| `customer_product` | 客户与产品关联 |
+| `document_meta` | 文档元数据与 Q1 锁定的 5 字段 ACL |
+
+```bash
+cd backend
+uv run python scripts/init_customer_master.py data/customer_master_init_sample.xlsx
+uv run python scripts/match_customer.py "上海示例科技"
+```
+
+---
+
 ## 🛠 常用命令
 
 ```bash
