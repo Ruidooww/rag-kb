@@ -43,53 +43,63 @@ async def match(
 
     rows = (
         await session.execute(
-            select(Customer, CustomerAlias)
+            select(Customer.id, Customer.name, CustomerAlias.alias)
             .outerjoin(CustomerAlias, CustomerAlias.customer_id == Customer.id)
             .order_by(Customer.id, CustomerAlias.id)
         )
     ).all()
-    customers: dict[int, Customer] = {}
-    aliases: list[tuple[CustomerAlias, Customer]] = []
-    for customer, alias in rows:
-        customers.setdefault(customer.id, customer)
+    customers: dict[int, str] = {}
+    aliases: list[tuple[str, int, str]] = []
+    for customer_id, customer_name, alias in rows:
+        customers.setdefault(customer_id, customer_name)
         if alias is not None:
-            aliases.append((alias, customer))
+            aliases.append((alias, customer_id, customer_name))
 
     exact = next(
-        (customer for customer in customers.values() if customer.name == normalized_query),
+        (
+            (customer_id, customer_name)
+            for customer_id, customer_name in customers.items()
+            if customer_name == normalized_query
+        ),
         None,
     )
     if exact is not None:
+        customer_id, customer_name = exact
         return [
             MatchResult(
-                customer_id=exact.id,
-                customer_name=exact.name,
+                customer_id=customer_id,
+                customer_name=customer_name,
                 score=100,
                 method="exact",
             )
         ]
 
     alias_row = next(
-        ((alias, customer) for alias, customer in aliases if alias.alias == normalized_query),
+        (
+            (alias, customer_id, customer_name)
+            for alias, customer_id, customer_name in aliases
+            if alias == normalized_query
+        ),
         None,
     )
     if alias_row is not None:
-        alias, customer = alias_row
+        alias, customer_id, customer_name = alias_row
         return [
             MatchResult(
-                customer_id=customer.id,
-                customer_name=customer.name,
-                matched_alias=alias.alias,
+                customer_id=customer_id,
+                customer_name=customer_name,
+                matched_alias=alias,
                 score=100,
                 method="alias_exact",
             )
         ]
 
     candidates: dict[str, tuple[int, str, str | None]] = {
-        customer.name: (customer.id, customer.name, None) for customer in customers.values()
+        customer_name: (customer_id, customer_name, None)
+        for customer_id, customer_name in customers.items()
     }
-    for alias, customer in aliases:
-        candidates.setdefault(alias.alias, (customer.id, customer.name, alias.alias))
+    for alias, customer_id, customer_name in aliases:
+        candidates.setdefault(alias, (customer_id, customer_name, alias))
 
     candidate_items = list(candidates.items())
     extracted = process.extract(
