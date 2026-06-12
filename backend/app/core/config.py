@@ -58,6 +58,10 @@ class Settings(BaseSettings):
     customer_master_excel_path: str = "data/customer_master_init_sample.xlsx"
     customer_match_fuzzy_threshold: int = Field(default=80, ge=0, le=100)
     customer_match_limit: int = Field(default=5, gt=0)
+    extract_confidence_threshold: int = Field(default=70, ge=0, le=100)
+    prompts_dir: str = "prompts"
+    vision_dpi: int = Field(default=150, gt=0)
+    vision_max_pages: int = Field(default=20, gt=0)
 
     model_config = SettingsConfigDict(
         case_sensitive=False,

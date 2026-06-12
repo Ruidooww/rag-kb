@@ -346,4 +346,4 @@ async def test_document_meta_acl_5_fields_required() -> None:
     assert set(DocumentMeta.__table__.columns.keys()) == expected_columns
     assert acl_fields <= set(DocumentMeta.__table__.columns.keys())
     assert isinstance(DocumentMeta.__table__.columns["shared_depts"].type, ARRAY)
-    assert DocumentMeta.__table__.columns["owner_dept"].nullable is False
+    assert DocumentMeta.__table__.columns["owner_dept"].nullable is True

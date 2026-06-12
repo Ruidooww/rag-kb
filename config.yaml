@@ -33,5 +33,11 @@ customer_master_excel_path: data/customer_master_init_sample.xlsx
 customer_match_fuzzy_threshold: 80
 customer_match_limit: 5
 
+# ===== 产品 KB 元数据抽取 =====
+extract_confidence_threshold: 70
+prompts_dir: prompts
+vision_dpi: 150
+vision_max_pages: 20
+
 # ===== 知识缺口 =====
 gap_log_threshold: 0.5   # 检索分数低于此值记录到 knowledge_gaps

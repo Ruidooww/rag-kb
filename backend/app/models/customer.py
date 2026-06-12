@@ -66,9 +66,9 @@ class DocumentMetaCreate(BaseModel):
     event_date: datetime | None = None
     storage_key: str
     status: str = "uploaded"
-    audience: str = "internal"
-    owner_dept: str
+    audience: str = "internal_only"
+    owner_dept: str | None = None
     visibility: str = "internal"
-    sensitivity: str = "normal"
+    sensitivity: int = Field(default=3, ge=1, le=5)
     shared_depts: list[str] = Field(default_factory=list)
     extra: str | None = None

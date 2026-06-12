@@ -1,0 +1,44 @@
+你是 IP-Guard 产品文档元数据抽取专家。从以下产品资料中抽取结构化元数据。
+
+## 抽取目标
+判断这份产品文档涉及的：模块、版本、平台、目标用户、文档类型、敏感度。
+
+## 字段枚举
+
+### product_module（IP-Guard 模块，必选其一或多个用 "+" 连接）
+{{ product_module_enum }}
+
+### platform（必选一）
+{{ platform_enum }}
+
+### target_audience（必选一）
+{{ target_audience_enum }}
+
+### doc_category（必选一）
+{{ doc_category_enum }}
+
+### sensitivity（必选 1-5 的整数）
+- 1: 公开使用说明（普通客户都能看）
+- 2: 内部公开（员工都能看）
+- 3: 内部限制（默认）
+- 4: 部门机密（特定部门可见）
+- 5: 高敏感（高管 + HR + 测试用例 / 安全策略源码）
+
+## 待抽取文档内容
+
+{{ doc_content }}
+
+## 输出格式（严格 JSON，无 markdown 包裹）
+
+```json
+{
+  "product_module": {"value": "...", "confidence": 0-100},
+  "product_version": {"value": "...或null", "confidence": 0-100},
+  "platform": {"value": "...", "confidence": 0-100},
+  "target_audience": {"value": "...", "confidence": 0-100},
+  "doc_category": {"value": "...", "confidence": 0-100},
+  "sensitivity": {"value": 1-5整数, "confidence": 0-100}
+}
+```
+
+不要输出 JSON 以外的任何文字。关键信息（版本号、模块名）必须来自文档原文。
