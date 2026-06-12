@@ -2,7 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import SecretStr
+from pydantic import Field, SecretStr
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -55,6 +55,9 @@ class Settings(BaseSettings):
     llm_max_retries: int = 2
     router_confidence_threshold: float = 0.7
     ingest_concurrency: int = 5
+    customer_master_excel_path: str = "data/customer_master_init_sample.xlsx"
+    customer_match_fuzzy_threshold: int = Field(default=80, ge=0, le=100)
+    customer_match_limit: int = Field(default=5, gt=0)
 
     model_config = SettingsConfigDict(
         case_sensitive=False,

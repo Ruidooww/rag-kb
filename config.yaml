@@ -28,5 +28,10 @@ router_confidence_threshold: 0.7  # Router 意图识别置信度阈值
 ingest_concurrency: 5    # 批量入库并发数
 ppt_image_dpi: 100       # PPT 转图分辨率
 
+# ===== 客户主数据 =====
+customer_master_excel_path: data/customer_master_init_sample.xlsx
+customer_match_fuzzy_threshold: 80
+customer_match_limit: 5
+
 # ===== 知识缺口 =====
 gap_log_threshold: 0.5   # 检索分数低于此值记录到 knowledge_gaps
