@@ -61,17 +61,6 @@ async def test_text_path_extracts_all_fields(monkeypatch: pytest.MonkeyPatch) ->
     assert fake_llm.completed_prompts
 
 
-def test_vision_path_for_pptx() -> None:
-    assert product_kb_extract._route_by_extension("deck.pptx") == ExtractMethod.VISION
-
-
-def test_route_text_vs_vision_by_extension() -> None:
-    assert product_kb_extract._route_by_extension("manual.txt") == ExtractMethod.TEXT
-    assert product_kb_extract._route_by_extension("notes.md") == ExtractMethod.TEXT
-    assert product_kb_extract._route_by_extension("deck.pptx") == ExtractMethod.VISION
-    assert product_kb_extract._route_by_extension("sheet.xlsx") == ExtractMethod.VISION
-
-
 async def test_unsupported_extension_raises_extract_error() -> None:
     with pytest.raises(MetadataExtractError) as exc_info:
         await extract_product_kb_metadata("private/folder/config.xlsx", b"xlsx")

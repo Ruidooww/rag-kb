@@ -76,14 +76,6 @@ async def extract_product_kb_metadata(doc_path: str, doc_bytes: bytes) -> Produc
         raise MetadataExtractError() from exc
 
 
-def _route_by_extension(doc_path: str) -> ExtractMethod:
-    return (
-        ExtractMethod.TEXT
-        if Path(doc_path).suffix.lower() in _TEXT_EXTENSIONS
-        else ExtractMethod.VISION
-    )
-
-
 def _extract_pdf_text(doc_bytes: bytes) -> str:
     reader = PdfReader(BytesIO(doc_bytes))
     return "\n".join(page.extract_text() or "" for page in reader.pages)
