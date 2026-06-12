@@ -21,6 +21,21 @@ class LLMServiceError(AppException):
     status_code = 502
 
 
+class MetadataExtractError(AppException):
+    error_code = "METADATA_EXTRACT_ERROR"
+    status_code = 422
+
+    def __init__(
+        self,
+        message: str = "Failed to extract metadata",
+        *,
+        review_reasons: list[str] | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.needs_review = True
+        self.review_reasons = list(review_reasons or [])
+
+
 class VectorStoreError(AppException):
     error_code = "VECTOR_STORE_ERROR"
     status_code = 502

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import ARRAY, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import ARRAY, CheckConstraint, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -12,6 +12,20 @@ class DocumentMeta(Base):
     """Document metadata with the Q1-locked five-field ACL schema."""
 
     __tablename__ = "document_meta"
+    __table_args__ = (
+        CheckConstraint(
+            "audience IN ('internal_only', 'customer_facing', 'public')",
+            name="ck_document_meta_audience",
+        ),
+        CheckConstraint(
+            "visibility IN ('public', 'internal', 'confidential')",
+            name="ck_document_meta_visibility",
+        ),
+        CheckConstraint(
+            "sensitivity BETWEEN 1 AND 5",
+            name="ck_document_meta_sensitivity",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     doc_id: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
@@ -25,15 +39,13 @@ class DocumentMeta(Base):
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="uploaded", index=True)
 
     audience: Mapped[str] = mapped_column(
-        String(32), nullable=False, default="internal", index=True
+        String(32), nullable=False, default="internal_only", index=True
     )
-    owner_dept: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    owner_dept: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
     visibility: Mapped[str] = mapped_column(
         String(32), nullable=False, default="internal", index=True
     )
-    sensitivity: Mapped[str] = mapped_column(
-        String(32), nullable=False, default="normal", index=True
-    )
+    sensitivity: Mapped[int] = mapped_column(Integer, nullable=False, default=3, index=True)
     shared_depts: Mapped[list[str]] = mapped_column(ARRAY(String(32)), nullable=False, default=list)
 
     extra: Mapped[str | None] = mapped_column(Text, nullable=True)
