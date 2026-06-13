@@ -71,6 +71,13 @@ model_cache/
 historical_docs/
 *.local
 
+# #26 批量抽取产出（含真实产品资料映射，不入库）
+backend/data/metadata.xlsx
+backend/data/metadata.xlsx.tmp
+backend/data/metadata_sample.xlsx
+backend/data/failed_docs.jsonl
+backend/data/sample_5/
+
 # ===== Claude Code 本地配置 =====
 .claude/
 
