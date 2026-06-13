@@ -2245,6 +2245,7 @@ dependencies = [
     { name = "qdrant-client" },
     { name = "rapidfuzz" },
     { name = "sqlalchemy", extra = ["asyncio"] },
+    { name = "tqdm" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
@@ -2287,6 +2288,7 @@ requires-dist = [
     { name = "qdrant-client", specifier = ">=1.18.0" },
     { name = "rapidfuzz", specifier = ">=3.10" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.50" },
+    { name = "tqdm", specifier = ">=4.66" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.30" },
 ]
 

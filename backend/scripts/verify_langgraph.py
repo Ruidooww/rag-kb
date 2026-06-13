@@ -8,6 +8,7 @@
 from typing import TypedDict
 
 from langgraph.graph import END, START, StateGraph
+from langgraph.graph.state import CompiledStateGraph
 
 from app.services.llm import get_llm
 
@@ -23,7 +24,7 @@ def call_llm(state: State) -> dict[str, str]:
     return {"response": response.text}
 
 
-def build_graph() -> object:
+def build_graph() -> CompiledStateGraph[State, None, State, State]:
     graph = StateGraph(State)
     graph.add_node("call_llm", call_llm)
     graph.add_edge(START, "call_llm")

@@ -30,6 +30,7 @@ dependencies = [
     "qdrant-client>=1.18.0",
     "rapidfuzz>=3.10",
     "sqlalchemy[asyncio]>=2.0.50",
+    "tqdm>=4.66",
     "uvicorn[standard]>=0.30",
 ]
 
@@ -60,6 +61,7 @@ python_version = "3.13"
 strict = true
 plugins = ["pydantic.mypy"]
 ignore_missing_imports = true
+explicit_package_bases = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
