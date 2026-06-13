@@ -108,6 +108,7 @@
 | 入口锁定 grep | PASS | 无 #25 私有 helper、pypdf/pdf2image 自路由调用 |
 | 范围 grep | PASS | 无 customer_match / CRM / IdP / Qdrant / DB 写入 |
 | 脱敏 grep | PASS | 无 traceback / `str(exc)` / `repr(exc)` / secret logging |
+| GitHub Self-Review | PASS | run `27455483064`，commit `f89a87d`，`1m32s` |
 
 ### 实际跑批数据
 
@@ -221,7 +222,7 @@ Success: no issues found in 6 source files
 | A5 依赖安全 | NEEDS_HUMAN | pip check 通过；新增 tqdm 为 `MPL-2.0 AND MIT` |
 | A6 commit message | PASS | `feat: #26 batch extract product KB metadata (199 docs)`，body 含 `Refs: #26` |
 | A7 Handoff 完整性 | PASS | 本文件包含 §0-§8、Part A-E、deferred 跑批表 |
-| A8 CI 复现 | pending | PR #20 Self-Review 已触发，Handoff 推送后复现 |
+| A8 CI 复现 | PASS | PR #20 Self-Review run `27455483064` 在 commit `f89a87d` 通过，耗时 `1m32s` |
 
 ### Part B 软指标
 
