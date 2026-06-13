@@ -19,9 +19,10 @@ if str(BACKEND_ROOT) not in sys.path:
     sys.path.insert(0, str(BACKEND_ROOT))
 
 from app.core.config import settings  # noqa: E402
-from app.core.exceptions import MetadataExtractError  # noqa: E402
+from app.core.exceptions import ConfigError, MetadataExtractError  # noqa: E402
 from app.models.product_kb_metadata import ProductKBMetadata  # noqa: E402
 from app.services.product_kb_extract import extract_product_kb_metadata  # noqa: E402
+from scripts._env_check import assert_llm_api_key_is_real  # noqa: E402
 from scripts._xlsx_schema import (  # noqa: E402
     EXTRACTED_FIELD_KEYS,
     METADATA_COLUMN_KEYS,
@@ -218,6 +219,11 @@ def main() -> int:
     if len(sys.argv) != 3:
         print("usage: batch_extract_product_kb.py <input_dir> <output_xlsx>")  # noqa: T201
         return 2
+    try:
+        assert_llm_api_key_is_real()
+    except ConfigError as exc:
+        logger.error("Env check failed: {}", exc.message)
+        return 3
     try:
         summary = asyncio.run(batch_extract(Path(sys.argv[1]), Path(sys.argv[2])))
     except (OSError, ValueError):
